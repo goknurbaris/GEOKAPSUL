@@ -54,23 +54,32 @@
                 const lat = e.latlng.lat;
                 const lng = e.latlng.lng;
 
-                // TERTEMİZ FORMU BURAYA EKLEDİK (Sadece Galeriden Seç)
+                // Bugünün tarihini YYYY-MM-DD formatında al
+                const today = new Date().toISOString().split('T')[0];
+
                 const formHtml = `
-                    <form action="/kapsul-kaydet" method="POST" enctype="multipart/form-data" class="flex flex-col gap-3 min-w-[240px]">
+                    <form action="/kapsul-kaydet" method="POST" enctype="multipart/form-data" class="flex flex-col gap-2 min-w-[220px]">
                         <input type="hidden" name="_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="latitude" value="${lat}">
                         <input type="hidden" name="longitude" value="${lng}">
 
-                        <label class="font-black text-slate-800 text-xs uppercase tracking-widest">Gizli Mesajın</label>
-                        <textarea name="message" required rows="3" class="border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 shadow-inner" placeholder="O anı kelimelere dök..."></textarea>
+                        <label class="font-black text-slate-800 text-[11px] uppercase tracking-widest text-center mt-1">Dijital İzini Bırak</label>
+                        <textarea name="message" required rows="2" class="border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 shadow-inner resize-none" placeholder="O anı kelimelere dök..."></textarea>
 
-                        <label class="font-black text-slate-800 text-xs uppercase tracking-widest mt-1">Görsel Ekle (Opsiyonel)</label>
+                        <label class="font-black text-slate-800 text-[10px] uppercase tracking-widest text-center mt-1">Mühür Tarihi (İsteğe Bağlı)</label>
+                        <input type="date" name="unlock_date" min="${today}" class="border border-slate-200 rounded-xl p-2 text-sm text-slate-600 focus:ring-2 focus:ring-indigo-500 bg-slate-50 shadow-inner w-full mb-1 cursor-pointer">
 
-                        <input type="file" name="image" accept="image/*" class="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-xl bg-white shadow-sm transition-all">
+                        <div class="flex gap-2 relative-container mt-1">
+                            <input type="file" name="image" accept="image/*" class="hidden" onchange="let btn = this.parentElement.querySelector('.photo-btn'); btn.innerHTML = '✅ FOTO'; btn.classList.replace('bg-slate-50', 'bg-emerald-50'); btn.classList.replace('text-slate-600', 'text-emerald-600'); btn.classList.replace('border-slate-200', 'border-emerald-200');">
 
-                        <button type="submit" class="bg-indigo-600 text-white font-black py-3 px-4 rounded-xl hover:bg-indigo-700 mt-2 shadow-lg shadow-indigo-500/30 uppercase tracking-widest transition-transform active:scale-95">
-                            Kapsülü Göm 💎
-                        </button>
+                            <button type="button" onclick="this.parentElement.querySelector('input[type=file]').click();" class="photo-btn flex-1 bg-slate-50 border-2 border-slate-200 text-slate-600 py-2.5 rounded-xl text-xs font-black transition-all shadow-sm flex items-center justify-center gap-1 hover:border-indigo-300 hover:text-indigo-600">
+                                📸 FOTO
+                            </button>
+
+                            <button type="submit" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl text-xs font-black transition-all shadow-md hover:bg-indigo-700 flex items-center justify-center gap-1 active:scale-95 border-2 border-indigo-600 hover:border-indigo-700">
+                                💎 EKLE
+                            </button>
+                        </div>
                     </form>
                 `;
                 popup.setLatLng(e.latlng).setContent(formHtml).openOn(map);
@@ -79,7 +88,6 @@
             @endauth
         });
 
-        // Veritabanındaki Kapsülleri Göster
         var capsules = @json($capsules ?? []);
         capsules.forEach(function(capsule) {
             var marker = L.marker([capsule.latitude, capsule.longitude]).addTo(map);
@@ -88,15 +96,52 @@
                     marker.bindPopup("<div class='text-center p-3'><span class='text-3xl block mb-2'>📡</span><b>Konum izni vermelisin!</b></div>").openPopup();
                     return;
                 }
+
                 var distance = userLocation.distanceTo([capsule.latitude, capsule.longitude]);
-                if (distance <= 50) {
-                    let contentHtml = `<div class="text-center min-w-[220px]">`;
-                    contentHtml += `<h3 class="text-emerald-500 font-black text-lg mb-3 uppercase tracking-widest">Kapsül Açıldı 🔓</h3>`;
-                    if (capsule.image) {
-                        contentHtml += `<img src="/storage/${capsule.image}" class="w-full h-40 object-cover rounded-2xl mb-4 shadow-md border-2 border-slate-100">`;
+                if (distance <= 100) {
+
+                    // ⏳ ZAMAN KİLİDİ KONTROLÜ (YENİ)
+                    let isLockedByTime = false;
+                    let formattedDate = "";
+
+                    if (capsule.unlock_date) {
+                        let unlockDate = new Date(capsule.unlock_date);
+                        let today = new Date();
+                        // Saatleri sıfırlayalım ki sadece "Gün" bazında baksın
+                        today.setHours(0,0,0,0);
+                        unlockDate.setHours(0,0,0,0);
+
+                        if (today < unlockDate) {
+                            isLockedByTime = true;
+                            // TR formatında tarihi yaz (Örn: 15.05.2026)
+                            formattedDate = unlockDate.toLocaleDateString('tr-TR');
+                        }
                     }
-                    contentHtml += `<p class="text-slate-800 font-bold italic bg-slate-50 p-4 rounded-2xl border border-slate-200">"${capsule.message}"</p></div>`;
+
+                    let contentHtml = `<div class="text-center min-w-[220px]">`;
+
+                    // EĞER ZAMAN KİLİDİ AÇILMAMIŞSA (Mühürlüyse)
+                    if (isLockedByTime) {
+                        contentHtml += `<div class="w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl shadow-inner border border-amber-200">⏳</div>`;
+                        contentHtml += `<h3 class="text-amber-600 font-black text-lg mb-1 uppercase tracking-widest">Zaman Kilidi!</h3>`;
+                        contentHtml += `<p class="text-slate-600 font-bold text-sm mb-3">Bu kapsül henüz açılamaz.</p>`;
+                        contentHtml += `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm">`;
+                        contentHtml += `<p class="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Mühür Kırılma Tarihi</p>`;
+                        contentHtml += `<p class="text-slate-800 font-black text-lg">${formattedDate}</p>`;
+                        contentHtml += `</div>`;
+                    }
+                    // EĞER ZAMAN GELDİYSE VEYA TARİH YOKSA (Normal Gösterim)
+                    else {
+                        contentHtml += `<h3 class="text-emerald-500 font-black text-lg mb-3 uppercase tracking-widest">Kapsül Açıldı 🔓</h3>`;
+                        contentHtml += `<p class="text-slate-800 font-bold italic bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-3 shadow-sm">"${capsule.message}"</p>`;
+                        if (capsule.image) {
+                            contentHtml += `<img src="/storage/${capsule.image}" alt="Kapsül Anısı" class="w-full h-48 object-cover rounded-2xl shadow-md border-2 border-slate-100 mt-2">`;
+                        }
+                    }
+
+                    contentHtml += `</div>`;
                     marker.bindPopup(contentHtml).openPopup();
+
                 } else {
                     marker.bindPopup(`<div class="text-center p-3 min-w-[200px]"><div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">🔒</div><h3 class="text-rose-600 font-black text-lg mb-1 uppercase tracking-widest">Çok Uzaksın!</h3><p class="text-slate-600 font-bold text-sm">Kilidi kırmak için <br><b class="text-rose-500 text-lg">${Math.round(distance)}m</b><br> daha yaklaşmalısın.</p></div>`).openPopup();
                 }

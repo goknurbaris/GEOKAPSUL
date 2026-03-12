@@ -9,38 +9,51 @@ class CapsuleController extends Controller
 {
     public function store(Request $request)
     {
-        // Fotoğraf (image) için yeni kurallar ekledik
         $validated = $request->validate([
             'message' => 'required|string|max:1000',
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // Maksimum 5MB fotoğraf
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+            'unlock_date' => 'nullable|date|after_or_equal:today', // TARIH KONTROLÜ
         ]);
 
         $imagePath = null;
-
-        // Eğer formdan bir fotoğraf geldiyse, onu 'public/capsules' klasörüne kaydet
         if ($request->hasFile('image')) {
             $imagePath = $request->file('image')->store('capsules', 'public');
         }
 
-        Capsule::create([
-            'user_id' => auth()->id(),
-            'message' => $validated['message'],
-            'latitude' => $validated['latitude'],
-            'longitude' => $validated['longitude'],
-            'image' => $imagePath, // Fotoğrafın yolunu veritabanına yaz
-        ]);
+        $kapsul = new Capsule();
+        $kapsul->user_id = auth()->id();
+        $kapsul->message = $validated['message'];
+        $kapsul->latitude = $validated['latitude'];
+        $kapsul->longitude = $validated['longitude'];
+        $kapsul->image = $imagePath;
+        $kapsul->unlock_date = $validated['unlock_date'] ?? null; // TARIHI KAYDET
+        $kapsul->save();
 
-        return back()->with('success', 'Kapsül başarıyla gömüldü!');
+        return back();
     }
 
     public function update(Request $request, Capsule $capsule)
     {
         if ($capsule->user_id !== auth()->id()) { abort(403); }
 
-        $validated = $request->validate(['message' => 'required|string|max:1000']);
-        $capsule->update($validated);
+        $validated = $request->validate([
+            'message' => 'required|string|max:1000',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+            'unlock_date' => 'nullable|date',
+        ]);
+
+        $capsule->message = $validated['message'];
+        if (isset($validated['unlock_date'])) {
+            $capsule->unlock_date = $validated['unlock_date'];
+        }
+
+        if ($request->hasFile('image')) {
+            $capsule->image = $request->file('image')->store('capsules', 'public');
+        }
+
+        $capsule->save();
         return back();
     }
 

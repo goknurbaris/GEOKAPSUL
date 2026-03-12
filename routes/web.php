@@ -1,41 +1,38 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
-use Illuminate\Support\Facades\Route;
-
-// Kendi oluşturduğumuz yapıları buraya tanıtıyoruz
 use App\Http\Controllers\CapsuleController;
 use App\Models\Capsule;
+use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-*/
-
-// 1. ANA SAYFA: Haritayı açar ve veritabanındaki tüm kapsülleri haritaya gönderir.
+// 1. ANA SAYFA (Harita Ekranı - Tüm Kapsüller Resimleriyle Birlikte Gider)
 Route::get('/', function () {
-    $capsules = Capsule::all();
-    return view('welcome', compact('capsules'));
+    return view('welcome', [
+        'capsules' => Capsule::all()
+    ]);
 });
 
-// 2. KONTROL PANELİ: Giriş yapmış kullanıcının sadece kendi kapsüllerini listeler.
+// 2. PANELİM (Sadece Kullanıcının Kendi Kapsülleri)
 Route::get('/dashboard', function () {
-    $myCapsules = Capsule::where('user_id', auth()->id())->latest()->get();
-    return view('dashboard', compact('myCapsules'));
+    return view('dashboard', [
+        'myCapsules' => Capsule::where('user_id', auth()->id())->latest()->get()
+    ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-// 3. KAPSÜL KAYDETME: Haritadan gelen verileri veritabanına yazar.
-Route::post('/kapsul-kaydet', [CapsuleController::class, 'store'])->middleware('auth');
-
-// 4. PROFİL AYARLARI: Şifre değiştirme, profil güncelleme vb. (Breeze ile geldi)
+// 3. GİRİŞ YAPMIŞ KULLANICI ROTALARI
 Route::middleware('auth')->group(function () {
+
+    // Profil İşlemleri (Breeze)
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // GeoKapsül İşlemleri (Ekle, Güncelle, Sil)
+    Route::post('/kapsul-kaydet', [CapsuleController::class, 'store'])->name('capsule.store');
+    Route::patch('/kapsul/{capsule}', [CapsuleController::class, 'update'])->name('capsule.update');
+    Route::delete('/kapsul/{capsule}', [CapsuleController::class, 'destroy'])->name('capsule.destroy');
+
 });
 
-// 5. GİRİŞ SİSTEMİ: Login, Register gibi sayfaların dosyalarını dahil eder.
+// 4. BREEZE KİMLİK DOĞRULAMA (Login/Register)
 require __DIR__.'/auth.php';
-Route::patch('/kapsul/{capsule}', [CapsuleController::class, 'update'])->middleware('auth')->name('capsule.update');
-Route::delete('/kapsul/{capsule}', [CapsuleController::class, 'destroy'])->middleware('auth')->name('capsule.destroy');

@@ -1,102 +1,111 @@
-<x-app-layout>
-    <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <h2 class="font-black text-2xl text-slate-800 tracking-tight uppercase">
-                Kapsül Arşivim
-            </h2>
-            <div class="flex items-center gap-3">
-                <span class="hidden md:block bg-indigo-100 text-indigo-700 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest">
-                    {{ $myCapsules->count() }} Kapsül
-                </span>
-                <a href="{{ url('/') }}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-xs font-black transition-all shadow-md uppercase tracking-widest">
-                    + Yeni Ekle
-                </a>
-            </div>
-        </div>
-    </x-slot>
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Panelim - GeoKapsül</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+</head>
+<body class="font-sans antialiased bg-slate-900 text-slate-200 min-h-screen">
 
-    <div class="py-12 bg-slate-50 min-h-screen">
+    <nav class="bg-slate-950 border-b border-slate-800 px-6 py-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
+        <div class="flex items-center gap-4">
+            <span class="font-black text-xl text-indigo-500 tracking-widest uppercase">💎 GeoKapsül</span>
+        </div>
+
+        <div class="flex items-center gap-6">
+            <span class="text-sm font-bold text-slate-400 hidden sm:inline-block">{{ auth()->user()->name }}</span>
+
+            <a href="{{ url('/') }}" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-md hover:shadow-indigo-500/30 flex items-center gap-2 border border-indigo-500">
+                🗺️ Haritaya Dön
+            </a>
+
+            <a href="{{ route('profile.edit') }}" class="text-slate-500 hover:text-indigo-400 text-xs font-black uppercase tracking-widest transition-colors">Profil</a>
+
+            <form method="POST" action="{{ route('logout') }}" class="m-0">
+                @csrf
+                <button type="submit" class="text-rose-600 hover:text-rose-500 text-xs font-black uppercase tracking-widest transition-colors">
+                    Çıkış
+                </button>
+            </form>
+        </div>
+    </nav>
+
+    <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
-            @if($myCapsules->isEmpty())
-                <div class="bg-white border border-slate-200 rounded-[3rem] p-20 text-center shadow-sm">
-                    <div class="text-6xl mb-6">📍</div>
-                    <h3 class="text-3xl font-black text-slate-800 mb-2 uppercase tracking-tight">Henüz Kapsülün Yok</h3>
-                    <p class="text-slate-500 mb-8 font-medium">Haritaya git ve ilk dijital izini bırak.</p>
-                    <a href="{{ url('/') }}" class="inline-flex px-10 py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg hover:bg-indigo-700 transition-all uppercase tracking-widest">Haritayı Aç</a>
-                </div>
-            @else
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    @foreach($myCapsules as $capsule)
-                        <div class="bg-white border-2 border-slate-100 rounded-[2.5rem] p-6 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between group">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                @forelse ($myCapsules as $capsule)
+                    <div x-data="{ isEditing: false }" class="bg-slate-800 border border-slate-700 rounded-2xl shadow-lg hover:shadow-indigo-500/20 transition-all overflow-hidden flex flex-col group">
 
-                            <div>
-                                <div class="flex justify-between items-start mb-6">
-                                    <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center border border-indigo-100 shadow-inner group-hover:rotate-6 transition-transform">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                            <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                        </svg>
-                                    </div>
-
-                                    <div class="flex gap-2">
-                                        <button onclick="editCapsule({{ $capsule->id }}, '{{ addslashes($capsule->message) }}')" class="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors border border-transparent hover:border-indigo-100" title="Düzenle">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 00 2 2h14a2 2 0 00 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                                        </button>
-
-                                        <form action="{{ route('capsule.destroy', $capsule) }}" method="POST" onsubmit="return confirm('Sonsuza dek silinecek! Emin misin?')">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors border border-transparent hover:border-rose-100" title="Sil">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
-
+                        <div x-show="!isEditing" class="flex flex-col h-full">
+                            <div class="relative w-full h-40 bg-slate-900 flex items-center justify-center border-b border-slate-700 overflow-hidden">
                                 @if($capsule->image)
-                                    <div class="mb-5 rounded-2xl overflow-hidden border-2 border-slate-100 shadow-sm relative group-hover:border-indigo-100 transition-colors">
-                                        <img src="{{ asset('storage/' . $capsule->image) }}" alt="Kapsül Anısı" class="w-full h-48 object-cover transform hover:scale-110 transition-transform duration-700">
-                                    </div>
+                                    <img src="{{ asset('storage/' . $capsule->image) }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Kapsül Anısı">
+                                @else
+                                    <span class="text-slate-700 text-4xl">📸</span>
                                 @endif
+                            </div>
 
-                                <div class="mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                    <p class="text-lg text-slate-800 font-bold italic leading-snug">
-                                        "{{ $capsule->message }}"
-                                    </p>
+                            <div class="p-5 flex-1 flex flex-col">
+                                <p class="text-slate-300 font-bold italic mb-4 line-clamp-3">"{{ $capsule->message }}"</p>
+
+                                <div class="mt-auto pt-4 border-t border-slate-700 text-[11px] text-slate-500 font-bold tracking-wider space-y-1 uppercase">
+                                    <p class="flex items-center gap-1"><span class="text-indigo-500">📍</span> {{ number_format($capsule->latitude, 4) }}, {{ number_format($capsule->longitude, 4) }}</p>
+                                    <p class="flex items-center gap-1"><span class="text-emerald-500">🕒</span> {{ $capsule->created_at->format('d/m/Y - H:i') }}</p>
                                 </div>
                             </div>
 
-                            <div class="pt-5 border-t-2 border-slate-100 space-y-2">
-                                <p class="text-[11px] font-black text-indigo-500 uppercase tracking-widest flex items-center">
-                                    <span class="w-2 h-2 bg-indigo-500 rounded-full mr-2"></span>
-                                    Kordinat: {{ round($capsule->latitude, 4) }}, {{ round($capsule->longitude, 4) }}
-                                </p>
-                                <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center">
-                                    <span class="w-2 h-2 bg-slate-300 rounded-full mr-2"></span>
-                                    Tarih: {{ $capsule->created_at->format('d/m/Y H:i') }}
-                                </p>
+                            <div class="bg-slate-900 px-5 py-3 border-t border-slate-700 flex justify-between items-center">
+                                <button @click="isEditing = true" class="text-indigo-400 hover:text-indigo-300 text-xs font-black uppercase tracking-widest flex items-center gap-1 transition-colors">
+                                    ✏️ DÜZENLE
+                                </button>
+
+                                <form action="{{ route('capsule.destroy', $capsule->id) }}" method="POST" onsubmit="return confirm('Bu anıyı sonsuza dek silmek istiyor musun?');" class="m-0">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-rose-500 hover:text-rose-400 text-xs font-black uppercase tracking-widest flex items-center gap-1 transition-colors">
+                                        🗑️ SİL
+                                    </button>
+                                </form>
                             </div>
                         </div>
-                    @endforeach
-                </div>
-            @endif
+
+                        <div x-show="isEditing" style="display: none;" class="p-5 flex flex-col h-full justify-center bg-slate-800">
+                            <form action="{{ route('capsule.update', $capsule->id) }}" method="POST" enctype="multipart/form-data" class="flex flex-col gap-4 h-full m-0">
+                                @csrf
+                                @method('PATCH')
+
+                                <div class="flex-1">
+                                    <label class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-1 block">Yazıyı Düzenle</label>
+                                    <textarea name="message" required rows="3" class="w-full bg-slate-900 border border-slate-600 rounded-xl p-3 text-sm text-slate-200 focus:ring-indigo-500 focus:border-indigo-500 resize-none">{{ $capsule->message }}</textarea>
+
+                                    <label class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-3 mb-1 block">Yeni Fotoğraf (İsteğe Bağlı)</label>
+                                    <input type="file" name="image" accept="image/*" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-900 file:text-indigo-300 hover:file:bg-indigo-800 cursor-pointer">
+                                </div>
+
+                                <div class="flex gap-2 mt-auto">
+                                    <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-colors">
+                                        ✅ KAYDET
+                                    </button>
+                                    <button @click="isEditing = false" type="button" class="flex-1 bg-slate-600 hover:bg-slate-500 text-white py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-colors">
+                                        İPTAL
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                    </div>
+                @empty
+                    <div class="col-span-full py-20 flex flex-col items-center justify-center text-center">
+                        <span class="text-6xl mb-4">🌌</span>
+                        <h3 class="text-2xl font-black text-slate-200 mb-2">Henüz Hiç İz Bırakmadın</h3>
+                        <p class="text-slate-400 font-medium max-w-md">Karanlık haritaya geri dön ve ilk kapsülünü göm!</p>
+                    </div>
+                @endforelse
+            </div>
 
         </div>
     </div>
-
-    <script>
-        function editCapsule(id, oldMessage) {
-            const newMessage = prompt("Mesajı Güncelle:", oldMessage);
-            if (newMessage !== null && newMessage !== oldMessage && newMessage.trim() !== "") {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = `/kapsul/${id}`;
-                form.innerHTML = `
-                    @csrf @method('PATCH')
-                    <input type="hidden" name="message" value="${newMessage}">
-                `;
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-    </script>
-</x-app-layout>
+</body>
+</html>
