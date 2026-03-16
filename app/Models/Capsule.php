@@ -9,10 +9,9 @@ class Capsule extends Model
 {
     use HasFactory;
 
-    // unlock_date EKLENDİ!
-    protected $fillable = ['user_id', 'message', 'image', 'latitude', 'longitude', 'unlock_date'];
+    // pin_code EKLENDİ!
+    protected $fillable = ['user_id', 'message', 'image', 'latitude', 'longitude', 'unlock_date', 'pin_code'];
 
-    // Tarih formatında tutulacağını belirtiyoruz
     protected $casts = [
         'unlock_date' => 'date:Y-m-d',
     ];

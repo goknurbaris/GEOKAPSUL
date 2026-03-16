@@ -52,22 +52,16 @@
         var capsules = @json($capsules ?? []);
         var isFirstLocationFound = false;
 
-        // RADAR ELEMENTLERİ
         var radarPanel = document.getElementById('radar-panel');
         var radarText = document.getElementById('radar-text');
         var radarDistance = document.getElementById('radar-distance');
         var radarIcon = document.getElementById('radar-icon');
-
-        // 🛡️ TİTREME ÖNLEYİCİ (Jitter Filter) DEĞİŞKENİ
         var lastDistance = null;
 
-        // 🚶‍♂️ CANLI TAKİBİ BAŞLAT
         map.locate({watch: true, enableHighAccuracy: true});
 
         map.on('locationfound', function(e) {
             userLocation = e.latlng;
-
-            // İlk açılışta kamerayı kullanıcıya götür
             if(!isFirstLocationFound) {
                 map.setView(e.latlng, 15);
                 isFirstLocationFound = true;
@@ -80,25 +74,18 @@
                 userMarker.setLatLng(e.latlng);
             }
 
-            // 🎯 RADAR HESAPLAMASI (Sıcak-Soğuk Oyunu)
             if (capsules.length > 0) {
                 let minDistance = Infinity;
-
-                // En yakın kapsülü bul
                 capsules.forEach(function(c) {
                     let d = userLocation.distanceTo([c.latitude, c.longitude]);
                     if (d < minDistance) { minDistance = d; }
                 });
 
                 let mesafe = Math.round(minDistance);
-
-                // 🛡️ GPS FİLTRESİ: Sadece 4 metreden fazla yer değişimi varsa ekranı güncelle!
                 if (lastDistance === null || Math.abs(lastDistance - mesafe) > 4) {
-
-                    lastDistance = mesafe; // Hafızayı güncelle
+                    lastDistance = mesafe;
                     radarDistance.innerText = mesafe + " Metre";
 
-                    // MESAFEYE GÖRE RADAR RENGİNİ VE ALARMI DEĞİŞTİR
                     if (mesafe <= 100) {
                         radarPanel.className = "absolute bottom-10 left-1/2 -translate-x-1/2 z-[1000] bg-emerald-900/95 border-2 border-emerald-500 rounded-full px-6 py-3 shadow-[0_0_30px_rgba(16,185,129,0.6)] flex items-center gap-4 backdrop-blur-md transition-all duration-500 scale-110";
                         radarText.innerText = "HEDEF BÖLGESİ!";
@@ -127,11 +114,24 @@
             }
         });
 
-        // Hata durumunda radarı gizle
-        map.on('locationerror', function(e) {
-            radarPanel.classList.add('hidden');
-            alert("Sinyal alınamıyor! Konum servislerinizi (GPS) açtığınızdan emin olun.");
-        });
+        // Şifre Kırma Fonksiyonu
+        window.verifyPin = function(id, correctPin) {
+            let inputElement = document.getElementById('pin-input-' + id);
+            let inputValue = inputElement.value;
+            let errorMsg = document.getElementById('pin-error-' + id);
+
+            if (inputValue === correctPin) {
+                document.getElementById('pin-screen-' + id).classList.add('hidden');
+                document.getElementById('capsule-content-' + id).classList.remove('hidden');
+            } else {
+                errorMsg.classList.remove('hidden');
+                inputElement.classList.add('border-rose-500', 'bg-rose-50');
+                inputElement.value = '';
+                setTimeout(() => {
+                    inputElement.classList.remove('border-rose-500', 'bg-rose-50');
+                }, 500);
+            }
+        }
 
         var popup = L.popup();
 
@@ -142,7 +142,7 @@
                 const today = new Date().toISOString().split('T')[0];
 
                 const formHtml = `
-                    <form action="/kapsul-kaydet" method="POST" enctype="multipart/form-data" class="flex flex-col gap-2 min-w-[220px]">
+                    <form action="/kapsul-kaydet" method="POST" enctype="multipart/form-data" class="flex flex-col gap-2 min-w-[240px]">
                         <input type="hidden" name="_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="latitude" value="${lat}">
                         <input type="hidden" name="longitude" value="${lng}">
@@ -150,10 +150,26 @@
                         <label class="font-black text-slate-800 text-[11px] uppercase tracking-widest text-center mt-1">Dijital İzini Bırak</label>
                         <textarea name="message" required rows="2" class="border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 shadow-inner resize-none" placeholder="O anı kelimelere dök..."></textarea>
 
-                        <label class="font-black text-slate-800 text-[10px] uppercase tracking-widest text-center mt-1">Mühür Tarihi (İsteğe Bağlı)</label>
-                        <input type="date" name="unlock_date" min="${today}" class="border border-slate-200 rounded-xl p-2 text-sm text-slate-600 focus:ring-2 focus:ring-indigo-500 bg-slate-50 shadow-inner w-full mb-1 cursor-pointer">
+                        <div class="flex flex-col gap-2">
+                            <div>
+                                <label class="font-black text-slate-800 text-[9px] uppercase tracking-widest block mb-1">Tarih Kilidi (İsteğe Bağlı)</label>
+                                <input type="date" name="unlock_date" min="${today}" class="border border-slate-200 rounded-xl p-2 text-xs text-slate-600 focus:ring-2 focus:ring-indigo-500 bg-slate-50 shadow-inner w-full cursor-pointer">
+                            </div>
 
-                        <div class="flex gap-2 relative-container mt-1">
+                            <div class="border border-slate-200 rounded-xl p-2 bg-slate-50 shadow-inner transition-all">
+                                <label class="flex items-center gap-2 cursor-pointer group">
+                                    <input type="checkbox" onchange="let box = document.getElementById('pin_box'); let input = document.getElementById('pin_input'); if(this.checked) { box.classList.remove('hidden'); input.required = true; } else { box.classList.add('hidden'); input.required = false; input.value = ''; }" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 border-slate-300 cursor-pointer">
+                                    <span class="font-black text-slate-800 text-[10px] uppercase tracking-widest cursor-pointer group-hover:text-indigo-600 transition-colors">Gizli PIN Ekle</span>
+                                </label>
+
+                                <div id="pin_box" class="hidden mt-3">
+                                    <input type="text" id="pin_input" name="pin_code" maxlength="4" placeholder="****" class="border border-slate-300 rounded-lg p-2 text-xl text-center tracking-[0.4em] font-black text-slate-600 focus:ring-2 focus:ring-indigo-500 w-full" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                                    <p class="text-[8px] text-slate-500 mt-1 font-bold text-center">Sadece 4 haneli şifreyi bilenler açabilir.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 relative-container mt-2">
                             <input type="file" name="image" accept="image/*" class="hidden" onchange="let btn = this.parentElement.querySelector('.photo-btn'); btn.innerHTML = '✅ FOTO'; btn.classList.replace('bg-slate-50', 'bg-emerald-50'); btn.classList.replace('text-slate-600', 'text-emerald-600'); btn.classList.replace('border-slate-200', 'border-emerald-200');">
                             <button type="button" onclick="this.parentElement.querySelector('input[type=file]').click();" class="photo-btn flex-1 bg-slate-50 border-2 border-slate-200 text-slate-600 py-2.5 rounded-xl text-xs font-black transition-all shadow-sm flex items-center justify-center gap-1 hover:border-indigo-300 hover:text-indigo-600">📸 FOTO</button>
                             <button type="submit" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl text-xs font-black transition-all shadow-md hover:bg-indigo-700 flex items-center justify-center gap-1 active:scale-95 border-2 border-indigo-600 hover:border-indigo-700">💎 EKLE</button>
@@ -184,7 +200,6 @@
                         let today = new Date();
                         today.setHours(0,0,0,0);
                         unlockDate.setHours(0,0,0,0);
-
                         if (today < unlockDate) {
                             isLockedByTime = true;
                             formattedDate = unlockDate.toLocaleDateString('tr-TR');
@@ -194,22 +209,41 @@
                     let contentHtml = `<div class="text-center min-w-[220px]">`;
 
                     if (isLockedByTime) {
-                        contentHtml += `<div class="w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl shadow-inner border border-amber-200">⏳</div>`;
-                        contentHtml += `<h3 class="text-amber-600 font-black text-lg mb-1 uppercase tracking-widest">Zaman Kilidi!</h3>`;
-                        contentHtml += `<p class="text-slate-600 font-bold text-sm mb-3">Bu kapsül henüz açılamaz.</p>`;
-                        contentHtml += `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm">`;
-                        contentHtml += `<p class="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Mühür Kırılma Tarihi</p>`;
-                        contentHtml += `<p class="text-slate-800 font-black text-lg">${formattedDate}</p>`;
-                        contentHtml += `</div>`;
-                    } else {
-                        contentHtml += `<h3 class="text-emerald-500 font-black text-lg mb-3 uppercase tracking-widest">Kapsül Açıldı 🔓</h3>`;
-                        contentHtml += `<p class="text-slate-800 font-bold italic bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-3 shadow-sm">"${capsule.message}"</p>`;
-                        if (capsule.image) {
-                            contentHtml += `<img src="/storage/${capsule.image}" alt="Kapsül Anısı" class="w-full h-48 object-cover rounded-2xl shadow-md border-2 border-slate-100 mt-2">`;
-                        }
+                        contentHtml += `<div class="w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl shadow-inner border border-amber-200">⏳</div>
+                                        <h3 class="text-amber-600 font-black text-lg mb-1 uppercase tracking-widest">Zaman Kilidi!</h3>
+                                        <p class="text-slate-600 font-bold text-sm mb-3">Bu kapsül henüz açılamaz.</p>
+                                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm">
+                                            <p class="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Mühür Kırılma Tarihi</p>
+                                            <p class="text-slate-800 font-black text-lg">${formattedDate}</p>
+                                        </div>`;
                     }
+                    else if (capsule.pin_code) {
+                        contentHtml += `<div id="pin-screen-${capsule.id}">
+                                            <div class="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl shadow-inner border border-rose-200">🔒</div>
+                                            <h3 class="text-rose-600 font-black text-lg mb-1 uppercase tracking-widest">Gizli Kapsül</h3>
+                                            <p class="text-slate-500 font-bold text-[11px] mb-3">Bu anıyı görmek için şifreyi girmelisin.</p>
+
+                                            <input type="password" id="pin-input-${capsule.id}" maxlength="4" placeholder="****" class="w-24 text-center text-2xl tracking-[0.4em] bg-slate-50 border border-slate-200 rounded-xl p-2 shadow-inner focus:ring-2 focus:ring-rose-500 mx-auto block mb-1 font-black text-slate-700 transition-colors">
+                                            <p id="pin-error-${capsule.id}" class="text-rose-500 text-[10px] font-black uppercase mb-3 hidden transition-all">Hatalı Şifre!</p>
+
+                                            <button onclick="verifyPin(${capsule.id}, '${capsule.pin_code}')" class="w-full bg-rose-600 text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-md hover:bg-rose-700 active:scale-95 border-2 border-rose-600 hover:border-rose-700">KİLİDİ KIR</button>
+                                        </div>`;
+
+                        contentHtml += `<div id="capsule-content-${capsule.id}" class="hidden">
+                                            <h3 class="text-emerald-500 font-black text-lg mb-3 uppercase tracking-widest">Kapsül Açıldı 🔓</h3>
+                                            <p class="text-slate-800 font-bold italic bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-3 shadow-sm">"${capsule.message}"</p>
+                                            ${capsule.image ? `<img src="/storage/${capsule.image}" alt="Kapsül Anısı" class="w-full h-48 object-cover rounded-2xl shadow-md border-2 border-slate-100 mt-2">` : ''}
+                                        </div>`;
+                    }
+                    else {
+                        contentHtml += `<h3 class="text-emerald-500 font-black text-lg mb-3 uppercase tracking-widest">Kapsül Açıldı 🔓</h3>
+                                        <p class="text-slate-800 font-bold italic bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-3 shadow-sm">"${capsule.message}"</p>
+                                        ${capsule.image ? `<img src="/storage/${capsule.image}" alt="Kapsül Anısı" class="w-full h-48 object-cover rounded-2xl shadow-md border-2 border-slate-100 mt-2">` : ''}`;
+                    }
+
                     contentHtml += `</div>`;
                     marker.bindPopup(contentHtml).openPopup();
+
                 } else {
                     marker.bindPopup(`<div class="text-center p-3 min-w-[200px]"><div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">🔒</div><h3 class="text-rose-600 font-black text-lg mb-1 uppercase tracking-widest">Çok Uzaksın!</h3><p class="text-slate-600 font-bold text-sm">Kilidi kırmak için <br><b class="text-rose-500 text-lg">${Math.round(distance)}m</b><br> daha yaklaşmalısın.</p></div>`).openPopup();
                 }
