@@ -11,6 +11,8 @@
         #map { height: 100vh; width: 100%; z-index: 1; }
         body { margin: 0; padding: 0; overflow: hidden; }
         .leaflet-popup-content { margin: 14px; }
+        /* Ses oynatıcıyı modernleştiren küçük bir dokunuş */
+        audio::-webkit-media-controls-panel { background-color: #f8fafc; }
     </style>
 </head>
 <body class="antialiased relative">
@@ -114,7 +116,6 @@
             }
         });
 
-        // Şifre Kırma Fonksiyonu
         window.verifyPin = function(id, correctPin) {
             let inputElement = document.getElementById('pin-input-' + id);
             let inputValue = inputElement.value;
@@ -164,15 +165,22 @@
 
                                 <div id="pin_box" class="hidden mt-3">
                                     <input type="text" id="pin_input" name="pin_code" maxlength="4" placeholder="****" class="border border-slate-300 rounded-lg p-2 text-xl text-center tracking-[0.4em] font-black text-slate-600 focus:ring-2 focus:ring-indigo-500 w-full" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-                                    <p class="text-[8px] text-slate-500 mt-1 font-bold text-center">Sadece 4 haneli şifreyi bilenler açabilir.</p>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="flex gap-2 relative-container mt-2">
-                            <input type="file" name="image" accept="image/*" class="hidden" onchange="let btn = this.parentElement.querySelector('.photo-btn'); btn.innerHTML = '✅ FOTO'; btn.classList.replace('bg-slate-50', 'bg-emerald-50'); btn.classList.replace('text-slate-600', 'text-emerald-600'); btn.classList.replace('border-slate-200', 'border-emerald-200');">
-                            <button type="button" onclick="this.parentElement.querySelector('input[type=file]').click();" class="photo-btn flex-1 bg-slate-50 border-2 border-slate-200 text-slate-600 py-2.5 rounded-xl text-xs font-black transition-all shadow-sm flex items-center justify-center gap-1 hover:border-indigo-300 hover:text-indigo-600">📸 FOTO</button>
-                            <button type="submit" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl text-xs font-black transition-all shadow-md hover:bg-indigo-700 flex items-center justify-center gap-1 active:scale-95 border-2 border-indigo-600 hover:border-indigo-700">💎 EKLE</button>
+                        <div class="flex gap-2 mt-2">
+                            <div class="flex-1 relative">
+                                <input type="file" name="image" accept="image/*" class="hidden" onchange="let btn = this.nextElementSibling; btn.innerHTML = '✅ FOTO'; btn.classList.replace('bg-slate-50', 'bg-emerald-50'); btn.classList.replace('text-slate-600', 'text-emerald-600'); btn.classList.replace('border-slate-200', 'border-emerald-200');">
+                                <button type="button" onclick="this.previousElementSibling.click();" class="w-full bg-slate-50 border-2 border-slate-200 text-slate-600 py-2.5 rounded-xl text-[10px] font-black transition-all shadow-sm flex items-center justify-center hover:border-indigo-300 hover:text-indigo-600">📸 FOTO</button>
+                            </div>
+
+                            <div class="flex-1 relative">
+                                <input type="file" name="audio" accept="audio/*" capture="microphone" class="hidden" onchange="let btn = this.nextElementSibling; btn.innerHTML = '✅ SES'; btn.classList.replace('bg-slate-50', 'bg-emerald-50'); btn.classList.replace('text-slate-600', 'text-emerald-600'); btn.classList.replace('border-slate-200', 'border-emerald-200');">
+                                <button type="button" onclick="this.previousElementSibling.click();" class="w-full bg-slate-50 border-2 border-slate-200 text-slate-600 py-2.5 rounded-xl text-[10px] font-black transition-all shadow-sm flex items-center justify-center hover:border-indigo-300 hover:text-indigo-600">🎙️ SES</button>
+                            </div>
+
+                            <button type="submit" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl text-[10px] font-black transition-all shadow-md hover:bg-indigo-700 flex items-center justify-center active:scale-95 border-2 border-indigo-600">💎 EKLE</button>
                         </div>
                     </form>
                 `;
@@ -206,7 +214,11 @@
                         }
                     }
 
-                    let contentHtml = `<div class="text-center min-w-[220px]">`;
+                    let contentHtml = `<div class="text-center min-w-[240px]">`;
+
+                    // Ses ve Fotoğraf HTML Hazırlığı
+                    let audioHtml = capsule.audio ? `<audio controls class="w-full mt-3 h-10 outline-none rounded-xl shadow-sm"><source src="/storage/${capsule.audio}" type="audio/mpeg">Tarayıcınız sesi desteklemiyor.</audio>` : '';
+                    let imageHtml = capsule.image ? `<img src="/storage/${capsule.image}" alt="Kapsül Anısı" class="w-full h-48 object-cover rounded-2xl shadow-md border-2 border-slate-100 mt-3">` : '';
 
                     if (isLockedByTime) {
                         contentHtml += `<div class="w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl shadow-inner border border-amber-200">⏳</div>
@@ -231,14 +243,16 @@
 
                         contentHtml += `<div id="capsule-content-${capsule.id}" class="hidden">
                                             <h3 class="text-emerald-500 font-black text-lg mb-3 uppercase tracking-widest">Kapsül Açıldı 🔓</h3>
-                                            <p class="text-slate-800 font-bold italic bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-3 shadow-sm">"${capsule.message}"</p>
-                                            ${capsule.image ? `<img src="/storage/${capsule.image}" alt="Kapsül Anısı" class="w-full h-48 object-cover rounded-2xl shadow-md border-2 border-slate-100 mt-2">` : ''}
+                                            <p class="text-slate-800 font-bold italic bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-0 shadow-sm">"${capsule.message}"</p>
+                                            ${audioHtml}
+                                            ${imageHtml}
                                         </div>`;
                     }
                     else {
                         contentHtml += `<h3 class="text-emerald-500 font-black text-lg mb-3 uppercase tracking-widest">Kapsül Açıldı 🔓</h3>
-                                        <p class="text-slate-800 font-bold italic bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-3 shadow-sm">"${capsule.message}"</p>
-                                        ${capsule.image ? `<img src="/storage/${capsule.image}" alt="Kapsül Anısı" class="w-full h-48 object-cover rounded-2xl shadow-md border-2 border-slate-100 mt-2">` : ''}`;
+                                        <p class="text-slate-800 font-bold italic bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-0 shadow-sm">"${capsule.message}"</p>
+                                        ${audioHtml}
+                                        ${imageHtml}`;
                     }
 
                     contentHtml += `</div>`;
