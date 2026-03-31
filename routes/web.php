@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CapsuleController;
+use App\Http\Controllers\GamificationController;
 use App\Models\Capsule;
 use Illuminate\Support\Facades\Route;
 
@@ -13,7 +14,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     // Tüm kapsülleri çekip ana sayfaya gönderiyoruz (içerik hariç - güvenlik için)
     return view('welcome', [
-        'capsules' => Capsule::select('id', 'latitude', 'longitude', 'unlock_date', 'created_at')
+        'capsules' => Capsule::select('id', 'latitude', 'longitude', 'unlock_date', 'created_at', 'category')
             ->selectRaw('CASE WHEN pin_code IS NOT NULL THEN 1 ELSE 0 END as has_pin')
             ->get()
     ]);
@@ -26,6 +27,14 @@ Route::get('/kapsul/{capsule}', [CapsuleController::class, 'show'])
 
 // Paylaşım linki ile kapsül görüntüleme (herkese açık)
 Route::get('/s/{shareCode}', [CapsuleController::class, 'showShared'])->name('capsule.shared');
+
+/*
+|--------------------------------------------------------------------------
+| GAMİFİCATİON - Liderlik & Rozetler (Herkese Açık)
+|--------------------------------------------------------------------------
+*/
+Route::get('/liderlik', [GamificationController::class, 'leaderboard'])->name('leaderboard');
+Route::get('/rozetler', [GamificationController::class, 'badges'])->name('badges');
 
 /*
 |--------------------------------------------------------------------------
@@ -57,6 +66,12 @@ Route::middleware('auth')->group(function () {
     
     // Paylaşım linki oluştur
     Route::post('/kapsul/{capsule}/share', [CapsuleController::class, 'createShareLink'])->name('capsule.share');
+    
+    // Kapsüle tepki ekle
+    Route::post('/kapsul/{capsule}/react', [CapsuleController::class, 'addReaction'])->name('capsule.react');
+    
+    // Gamification API
+    Route::get('/api/stats', [GamificationController::class, 'stats'])->name('api.stats');
 
 });
 

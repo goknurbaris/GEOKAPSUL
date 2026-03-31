@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Capsule;
+use App\Services\GamificationService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Cache;
 use Intervention\Image\ImageManager;
@@ -12,20 +13,22 @@ use Intervention\Image\Drivers\Gd\Driver;
 class CapsuleController extends Controller
 {
     /**
-     * Dashboard - Kapsüllerimi listele (sayfalama ve arama ile)
+     * Dashboard - Kapsüllerimi listele (sayfalama, arama ve kategori filtresi ile)
      */
     public function dashboard(Request $request)
     {
         $search = $request->input('search');
+        $category = $request->input('category');
         $perPage = 12;
         
         $myCapsules = Capsule::forUser(auth()->id())
             ->search($search)
+            ->category($category)
             ->latest()
             ->paginate($perPage)
             ->withQueryString();
 
-        return view('dashboard', compact('myCapsules', 'search'));
+        return view('dashboard', compact('myCapsules', 'search', 'category'));
     }
 
     /**
@@ -36,9 +39,11 @@ class CapsuleController extends Controller
         // Server-side mesafe kontrolü (100 metre)
         $userLat = $request->input('lat');
         $userLng = $request->input('lng');
+        $distanceKm = 0;
         
         if ($userLat && $userLng) {
             $distance = $capsule->distanceFrom((float) $userLat, (float) $userLng);
+            $distanceKm = $distance / 1000;
             
             if ($distance > 100) {
                 return response()->json([
@@ -58,6 +63,15 @@ class CapsuleController extends Controller
                 'lock_type' => 'time',
                 'unlock_date' => $unlockDate,
                 'message' => 'Bu kapsül ' . $unlockDate . ' tarihine kadar kilitli.'
+            ]);
+        }
+
+        // Yıldönümü kontrolü
+        if ($capsule->is_anniversary && !$capsule->is_anniversary_unlocked) {
+            return response()->json([
+                'locked' => true,
+                'lock_type' => 'anniversary',
+                'message' => 'Bu yıldönümü kapsülü sadece ' . $capsule->unlock_date->format('d M') . ' tarihinde açılabilir.'
             ]);
         }
 
@@ -83,6 +97,12 @@ class CapsuleController extends Controller
             }
         }
 
+        // XP kazan (giriş yapmışsa)
+        $gamificationResult = null;
+        if (auth()->check()) {
+            $gamificationResult = GamificationService::onCapsuleOpened(auth()->user(), $capsule, $distanceKm);
+        }
+
         // Başarılı - kapsül içeriğini döndür (cache ile)
         $cacheKey = "capsule_{$capsule->id}_content";
         
@@ -93,13 +113,30 @@ class CapsuleController extends Controller
                 'image' => $capsule->image ? asset('storage/' . $capsule->image) : null,
                 'audio' => $capsule->audio ? asset('storage/' . $capsule->audio) : null,
                 'created_at' => $capsule->created_at->format('d.m.Y H:i'),
+                'category' => $capsule->category_info,
+                'views' => $capsule->views,
+                'reactions' => $capsule->reactions ?? [],
             ];
         });
 
-        return response()->json([
+        // Görüntülenme sayısını güncelle (cache dışı)
+        $content['views'] = $capsule->fresh()->views;
+
+        $response = [
             'locked' => false,
             'capsule' => $content
-        ]);
+        ];
+
+        if ($gamificationResult) {
+            $response['xp_gained'] = $gamificationResult['xp_gained'];
+            $response['new_badges'] = collect($gamificationResult['new_badges'])->map(fn($b) => [
+                'name' => $b->name,
+                'icon' => $b->icon,
+                'xp_reward' => $b->xp_reward
+            ]);
+        }
+
+        return response()->json($response);
     }
 
     /**
@@ -134,6 +171,9 @@ class CapsuleController extends Controller
             }
         }
 
+        // Görüntülenme artır
+        $capsule->incrementViews();
+
         return view('auth.shared-capsule', [
             'locked' => false,
             'capsule' => $capsule
@@ -159,6 +199,25 @@ class CapsuleController extends Controller
     }
 
     /**
+     * Kapsüle tepki ekle
+     */
+    public function addReaction(Request $request, Capsule $capsule)
+    {
+        $emoji = $request->input('emoji');
+        
+        if (!in_array($emoji, Capsule::REACTION_EMOJIS)) {
+            return response()->json(['error' => 'Geçersiz emoji'], 400);
+        }
+
+        $capsule->addReaction($emoji);
+
+        return response()->json([
+            'success' => true,
+            'reactions' => $capsule->fresh()->reactions
+        ]);
+    }
+
+    /**
      * Kapsül oluştur
      */
     public function store(Request $request)
@@ -171,6 +230,9 @@ class CapsuleController extends Controller
             'audio' => 'nullable|file|mimes:mp3,wav,ogg,m4a,webm|max:20480',
             'unlock_date' => 'nullable|date|after_or_equal:today',
             'pin_code' => 'nullable|numeric|digits:4',
+            'category' => 'nullable|in:memory,gift,mystery,game,anniversary,treasure',
+            'is_anniversary' => 'nullable|boolean',
+            'hint' => 'nullable|string|max:500',
         ]);
 
         $kapsul = new Capsule();
@@ -180,6 +242,9 @@ class CapsuleController extends Controller
         $kapsul->longitude = $validated['longitude'];
         $kapsul->unlock_date = $validated['unlock_date'] ?? null;
         $kapsul->pin_code = $validated['pin_code'] ?? null;
+        $kapsul->category = $validated['category'] ?? 'memory';
+        $kapsul->is_anniversary = $validated['is_anniversary'] ?? false;
+        $kapsul->hint = $validated['hint'] ?? null;
 
         // Resim işleme ve optimizasyon
         if ($request->hasFile('image')) {
@@ -192,8 +257,20 @@ class CapsuleController extends Controller
         }
 
         $kapsul->save();
+
+        // XP kazan
+        $gamificationResult = GamificationService::onCapsuleCreated(auth()->user(), $kapsul);
         
-        return back()->with('success', 'Kapsül başarıyla oluşturuldu! 🎉');
+        $message = 'Kapsül başarıyla oluşturuldu! 🎉';
+        if ($gamificationResult['xp_gained'] > 0) {
+            $message .= ' +' . $gamificationResult['xp_gained'] . ' XP';
+        }
+        if (!empty($gamificationResult['new_badges'])) {
+            $badgeNames = collect($gamificationResult['new_badges'])->pluck('name')->join(', ');
+            $message .= ' | Yeni rozet: ' . $badgeNames;
+        }
+        
+        return back()->with('success', $message);
     }
 
     /**
@@ -211,11 +288,17 @@ class CapsuleController extends Controller
             'audio' => 'nullable|file|mimes:mp3,wav,ogg,m4a,webm|max:20480',
             'unlock_date' => 'nullable|date',
             'pin_code' => 'nullable|digits:4',
+            'category' => 'nullable|in:memory,gift,mystery,game,anniversary,treasure',
+            'is_anniversary' => 'nullable|boolean',
+            'hint' => 'nullable|string|max:500',
         ]);
 
         $capsule->message = $validated['message'];
         $capsule->unlock_date = !empty($validated['unlock_date']) ? $validated['unlock_date'] : null;
         $capsule->pin_code = !empty($validated['pin_code']) ? $validated['pin_code'] : null;
+        $capsule->category = $validated['category'] ?? $capsule->category;
+        $capsule->is_anniversary = $validated['is_anniversary'] ?? $capsule->is_anniversary;
+        $capsule->hint = $validated['hint'] ?? $capsule->hint;
 
         if ($request->hasFile('image')) {
             if ($capsule->image) {

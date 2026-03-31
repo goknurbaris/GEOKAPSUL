@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="theme-color" content="#0f172a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
@@ -21,7 +21,6 @@
     <meta property="og:url" content="{{ url('/') }}">
     <meta property="og:title" content="GeoKapsül - Dijital Zaman Kapsülü">
     <meta property="og:description" content="Anılarını gerçek dünya konumlarına göm. Fotoğraf, ses ve mesajlarını GPS koordinatlarına sakla.">
-    <meta property="og:image" content="{{ asset('images/og-image.png') }}">
     <meta property="og:locale" content="tr_TR">
     <meta property="og:site_name" content="GeoKapsül">
     
@@ -30,11 +29,9 @@
     <meta name="twitter:url" content="{{ url('/') }}">
     <meta name="twitter:title" content="GeoKapsül - Dijital Zaman Kapsülü">
     <meta name="twitter:description" content="Anılarını gerçek dünya konumlarına göm. Fotoğraf, ses ve mesajlarını GPS koordinatlarına sakla.">
-    <meta name="twitter:image" content="{{ asset('images/og-image.png') }}">
     
     {{-- PWA Manifest --}}
     <link rel="manifest" href="{{ asset('manifest.json') }}">
-    <link rel="apple-touch-icon" href="{{ asset('images/icon-192.png') }}">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -89,6 +86,16 @@
 
             {{-- Navigation --}}
             <div class="flex items-center gap-2 sm:gap-3">
+                {{-- Gamification Links --}}
+                <a href="{{ route('leaderboard') }}" class="glass px-3 py-2.5 sm:px-4 sm:py-3 rounded-2xl border border-white/10 text-white font-bold text-xs shadow-xl hover:bg-white/10 hover:border-amber-500/50 transition-all flex items-center gap-1.5" title="Liderlik">
+                    <span>🏅</span>
+                    <span class="hidden md:inline">Liderlik</span>
+                </a>
+                <a href="{{ route('badges') }}" class="glass px-3 py-2.5 sm:px-4 sm:py-3 rounded-2xl border border-white/10 text-white font-bold text-xs shadow-xl hover:bg-white/10 hover:border-violet-500/50 transition-all flex items-center gap-1.5" title="Rozetler">
+                    <span>🏆</span>
+                    <span class="hidden md:inline">Rozetler</span>
+                </a>
+                
                 @if (Route::has('login'))
                     @auth
                         <a href="{{ url('/dashboard') }}" class="glass px-4 py-2.5 sm:px-6 sm:py-3 rounded-2xl border border-indigo-500/50 text-white font-bold text-xs sm:text-sm shadow-xl hover:bg-indigo-600/50 hover:border-indigo-400 transition-all flex items-center gap-2">
@@ -109,6 +116,27 @@
             </div>
         </div>
     </header>
+
+    {{-- Category Filter --}}
+    <div class="absolute top-20 left-4 z-[1000] glass border border-white/10 rounded-2xl p-2 shadow-xl hidden sm:block">
+        <div class="flex flex-col gap-1">
+            <button onclick="filterCategory(null)" class="category-btn active px-3 py-2 rounded-xl text-xs font-bold text-white hover:bg-white/10 transition-all flex items-center gap-2" data-category="all">
+                <span>🌍</span> Tümü
+            </button>
+            <button onclick="filterCategory('memory')" class="category-btn px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:bg-white/10 hover:text-white transition-all flex items-center gap-2" data-category="memory">
+                <span>💭</span> Anı
+            </button>
+            <button onclick="filterCategory('gift')" class="category-btn px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:bg-white/10 hover:text-white transition-all flex items-center gap-2" data-category="gift">
+                <span>🎁</span> Hediye
+            </button>
+            <button onclick="filterCategory('mystery')" class="category-btn px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:bg-white/10 hover:text-white transition-all flex items-center gap-2" data-category="mystery">
+                <span>🔮</span> Gizem
+            </button>
+            <button onclick="filterCategory('treasure')" class="category-btn px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:bg-white/10 hover:text-white transition-all flex items-center gap-2" data-category="treasure">
+                <span>💎</span> Hazine
+            </button>
+        </div>
+    </div>
 
     {{-- Modern Radar Panel --}}
     <div id="radar-panel" class="absolute bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 z-[1000] glass border border-cyan-500/50 rounded-3xl px-5 py-3 sm:px-8 sm:py-4 shadow-[0_0_40px_rgba(6,182,212,0.2)] flex items-center gap-4 sm:gap-6 transition-all duration-500 hidden safe-bottom">
@@ -170,16 +198,38 @@
         var radarBars = document.getElementById('radar-bars');
         var lastDistance = null;
 
-        // Custom capsule icon
-        var capsuleIcon = L.divIcon({
-            className: 'capsule-marker',
-            html: `<div class="relative flex items-center justify-center">
-                     <div class="absolute w-8 h-8 bg-indigo-500/30 rounded-full animate-ping"></div>
-                     <div class="w-6 h-6 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-full shadow-lg shadow-indigo-500/50 flex items-center justify-center text-xs">💎</div>
-                   </div>`,
-            iconSize: [32, 32],
-            iconAnchor: [16, 16]
-        });
+        // Category icons and colors
+        var categoryConfig = {
+            memory: { icon: '💭', color: 'indigo' },
+            gift: { icon: '🎁', color: 'rose' },
+            mystery: { icon: '🔮', color: 'violet' },
+            game: { icon: '🎮', color: 'emerald' },
+            anniversary: { icon: '🎂', color: 'amber' },
+            treasure: { icon: '💎', color: 'cyan' }
+        };
+
+        // Get capsule icon based on category
+        function getCapsuleIcon(category) {
+            var config = categoryConfig[category] || categoryConfig.memory;
+            var colorClass = {
+                indigo: 'from-indigo-500 to-violet-500 shadow-indigo-500/50 bg-indigo-500/30',
+                rose: 'from-rose-500 to-pink-500 shadow-rose-500/50 bg-rose-500/30',
+                violet: 'from-violet-500 to-purple-500 shadow-violet-500/50 bg-violet-500/30',
+                emerald: 'from-emerald-500 to-green-500 shadow-emerald-500/50 bg-emerald-500/30',
+                amber: 'from-amber-500 to-yellow-500 shadow-amber-500/50 bg-amber-500/30',
+                cyan: 'from-cyan-500 to-blue-500 shadow-cyan-500/50 bg-cyan-500/30'
+            }[config.color];
+            
+            return L.divIcon({
+                className: 'capsule-marker',
+                html: `<div class="relative flex items-center justify-center">
+                         <div class="absolute w-8 h-8 ${colorClass.split(' ')[2]} rounded-full animate-ping"></div>
+                         <div class="w-6 h-6 bg-gradient-to-br ${colorClass.split(' ').slice(0,2).join(' ')} rounded-full shadow-lg ${colorClass.split(' ')[2]} flex items-center justify-center text-xs">${config.icon}</div>
+                       </div>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            });
+        }
 
         // Custom user icon
         var userIcon = L.divIcon({
@@ -192,6 +242,40 @@
             iconSize: [40, 40],
             iconAnchor: [20, 20]
         });
+
+        // Capsule markers layer
+        var capsuleMarkers = [];
+        var currentFilter = null;
+
+        // Filter capsules by category
+        function filterCategory(category) {
+            currentFilter = category;
+            
+            // Update button states
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                var btnCat = btn.dataset.category;
+                if ((category === null && btnCat === 'all') || btnCat === category) {
+                    btn.classList.add('active', 'text-white', 'bg-white/10');
+                    btn.classList.remove('text-slate-400');
+                } else {
+                    btn.classList.remove('active', 'text-white', 'bg-white/10');
+                    btn.classList.add('text-slate-400');
+                }
+            });
+
+            // Update markers visibility
+            capsuleMarkers.forEach(function(item) {
+                if (category === null || item.category === category) {
+                    if (!map.hasLayer(item.marker)) {
+                        item.marker.addTo(map);
+                    }
+                } else {
+                    if (map.hasLayer(item.marker)) {
+                        map.removeLayer(item.marker);
+                    }
+                }
+            });
+        }
 
         map.locate({watch: true, enableHighAccuracy: true});
 
@@ -374,6 +458,49 @@
 
                     <textarea name="message" required rows="2" class="border-2 border-slate-200 rounded-2xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 resize-none transition-all outline-none" placeholder="Anını buraya yaz..."></textarea>
 
+                    <!-- Kategori Seçimi -->
+                    <div>
+                        <label class="font-bold text-slate-500 text-[9px] uppercase tracking-widest block mb-2 ml-1">🏷️ Kategori</label>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="category" value="memory" class="hidden peer" checked>
+                                <div class="peer-checked:bg-indigo-100 peer-checked:border-indigo-400 peer-checked:text-indigo-600 bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-indigo-300 transition-all">
+                                    💭 Anı
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="category" value="gift" class="hidden peer">
+                                <div class="peer-checked:bg-rose-100 peer-checked:border-rose-400 peer-checked:text-rose-600 bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-rose-300 transition-all">
+                                    🎁 Hediye
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="category" value="mystery" class="hidden peer">
+                                <div class="peer-checked:bg-violet-100 peer-checked:border-violet-400 peer-checked:text-violet-600 bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-violet-300 transition-all">
+                                    🔮 Gizem
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="category" value="game" class="hidden peer">
+                                <div class="peer-checked:bg-emerald-100 peer-checked:border-emerald-400 peer-checked:text-emerald-600 bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-emerald-300 transition-all">
+                                    🎮 Oyun
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="category" value="anniversary" class="hidden peer">
+                                <div class="peer-checked:bg-amber-100 peer-checked:border-amber-400 peer-checked:text-amber-600 bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-amber-300 transition-all">
+                                    🎂 Yıldönümü
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="category" value="treasure" class="hidden peer">
+                                <div class="peer-checked:bg-cyan-100 peer-checked:border-cyan-400 peer-checked:text-cyan-600 bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-cyan-300 transition-all">
+                                    💎 Hazine
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="font-bold text-slate-500 text-[9px] uppercase tracking-widest block mb-1 ml-1">📅 Tarih Kilidi</label>
@@ -430,7 +557,12 @@
         @endauth
 
         capsules.forEach(function(capsule) {
-            var marker = L.marker([capsule.latitude, capsule.longitude], { icon: capsuleIcon }).addTo(map);
+            var icon = getCapsuleIcon(capsule.category || 'memory');
+            var marker = L.marker([capsule.latitude, capsule.longitude], { icon: icon }).addTo(map);
+            
+            // Store marker with category for filtering
+            capsuleMarkers.push({ marker: marker, category: capsule.category || 'memory' });
+            
             marker.on('click', function() {
                 if (!userLocation) {
                     marker.bindPopup(`<div class='text-center p-4'><span class='text-4xl block mb-2'>📍</span><p class='font-bold text-slate-700'>Konum izni vermelisin!</p></div>`).openPopup();
@@ -442,11 +574,16 @@
                     loadCapsuleContent(capsule.id, marker);
                 } else {
                     let distText = distance >= 1000 ? (distance/1000).toFixed(1) + ' km' : Math.round(distance) + ' m';
+                    var catInfo = categoryConfig[capsule.category] || categoryConfig.memory;
                     marker.bindPopup(`
                         <div class="text-center p-3 min-w-[220px]">
                             <div class="w-14 h-14 bg-gradient-to-br from-rose-400 to-pink-400 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl shadow-lg">🔒</div>
                             <h3 class="text-rose-600 font-black text-base mb-1 uppercase tracking-widest">Çok Uzaksın!</h3>
                             <p class="text-slate-500 font-medium text-xs mb-3">Kilidi kırmak için yaklaşmalısın</p>
+                            <div class="flex items-center justify-center gap-2 mb-3">
+                                <span class="text-lg">${catInfo.icon}</span>
+                                <span class="text-slate-400 text-xs font-bold">${capsule.category ? capsule.category.charAt(0).toUpperCase() + capsule.category.slice(1) : 'Anı'} Kapsülü</span>
+                            </div>
                             <div class="bg-gradient-to-br from-rose-100 to-pink-100 rounded-2xl p-3">
                                 <span class="text-rose-600 font-black text-xl">${distText}</span>
                                 <p class="text-rose-400 text-[10px] font-bold uppercase">uzaklık</p>

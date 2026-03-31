@@ -184,27 +184,47 @@
                         <div class="relative w-24 h-24 sm:w-28 sm:h-28 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-full flex items-center justify-center text-white font-bold text-4xl sm:text-5xl shadow-2xl">
                             {{ strtoupper(substr($user->name, 0, 1)) }}
                         </div>
+                        <!-- Level Badge -->
+                        <div class="absolute -bottom-1 -right-1 w-10 h-10 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg border-2 border-slate-900">
+                            {{ $user->level ?? 1 }}
+                        </div>
                     </div>
 
                     <!-- User Info -->
                     <div class="flex-1 text-center sm:text-left">
                         <h1 class="text-2xl sm:text-3xl font-bold text-white mb-1">{{ $user->name }}</h1>
-                        <p class="text-slate-400 mb-4">{{ $user->email }}</p>
+                        <p class="text-indigo-400 text-sm font-medium mb-1">{{ $user->level_title ?? 'Çaylak' }} • Seviye {{ $user->level ?? 1 }}</p>
+                        <p class="text-slate-500 text-sm mb-3">{{ $user->email }}</p>
+                        
+                        <!-- XP Progress Bar -->
+                        <div class="max-w-xs mx-auto sm:mx-0 mb-4">
+                            <div class="flex justify-between text-xs text-slate-400 mb-1">
+                                <span>{{ number_format($user->xp ?? 0) }} XP</span>
+                                <span>{{ number_format($user->xpForNextLevel() ?? 100) }} XP</span>
+                            </div>
+                            <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all" style="width: {{ $user->levelProgress() ?? 0 }}%"></div>
+                            </div>
+                        </div>
                         
                         <!-- Stats -->
                         <div class="flex flex-wrap justify-center sm:justify-start gap-3">
                             <div class="stat-card bg-white/5 border border-white/10 rounded-xl px-4 py-2">
-                                <div class="text-lg font-bold text-indigo-400">{{ $user->capsules()->count() }}</div>
+                                <div class="text-lg font-bold text-indigo-400">{{ $user->capsules_created ?? $user->capsules()->count() }}</div>
                                 <div class="text-xs text-slate-500">Kapsül</div>
                             </div>
                             <div class="stat-card bg-white/5 border border-white/10 rounded-xl px-4 py-2">
-                                <div class="text-lg font-bold text-emerald-400">{{ $user->created_at->diffInDays(now()) }}</div>
-                                <div class="text-xs text-slate-500">Gün</div>
+                                <div class="text-lg font-bold text-cyan-400">{{ $user->capsules_opened ?? 0 }}</div>
+                                <div class="text-xs text-slate-500">Keşif</div>
                             </div>
                             <div class="stat-card bg-white/5 border border-white/10 rounded-xl px-4 py-2">
-                                <div class="text-lg font-bold text-amber-400">{{ $user->created_at->format('M Y') }}</div>
-                                <div class="text-xs text-slate-500">Katılım</div>
+                                <div class="text-lg font-bold text-emerald-400">{{ number_format($user->total_distance_km ?? 0, 1) }}</div>
+                                <div class="text-xs text-slate-500">km</div>
                             </div>
+                            <a href="{{ route('badges') }}" class="stat-card bg-white/5 border border-white/10 rounded-xl px-4 py-2 hover:border-amber-500/30 transition-colors">
+                                <div class="text-lg font-bold text-amber-400">{{ $user->badges()->count() }}</div>
+                                <div class="text-xs text-slate-500">Rozet</div>
+                            </a>
                         </div>
                     </div>
                 </div>
