@@ -45,4 +45,12 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Get the capsules for the user.
+     */
+    public function capsules()
+    {
+        return $this->hasMany(Capsule::class);
+    }
 }
