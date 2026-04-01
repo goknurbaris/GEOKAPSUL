@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreCapsuleRequest;
+use App\Http\Requests\UpdateCapsuleRequest;
 use Illuminate\Http\Request;
 use App\Models\Capsule;
 use App\Services\GamificationService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\RateLimiter;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 
@@ -78,6 +81,7 @@ class CapsuleController extends Controller
         // PIN kontrolü
         if ($capsule->has_pin) {
             $inputPin = $request->input('pin');
+            $pinLimitKey = $this->pinRateLimitKey($request, $capsule);
             
             if (!$inputPin) {
                 return response()->json([
@@ -86,8 +90,20 @@ class CapsuleController extends Controller
                     'message' => 'Bu kapsül şifre korumalı.'
                 ]);
             }
+
+            if (RateLimiter::tooManyAttempts($pinLimitKey, 5)) {
+                return response()->json([
+                    'locked' => true,
+                    'lock_type' => 'pin',
+                    'error' => 'Çok fazla deneme yaptın.',
+                    'retry_after' => RateLimiter::availableIn($pinLimitKey),
+                    'message' => 'Lütfen biraz bekleyip tekrar dene.'
+                ], 429);
+            }
             
-            if ($inputPin !== $capsule->pin_code) {
+            if (!$capsule->verifyPin($inputPin)) {
+                RateLimiter::hit($pinLimitKey, 600);
+
                 return response()->json([
                     'locked' => true,
                     'lock_type' => 'pin',
@@ -95,6 +111,8 @@ class CapsuleController extends Controller
                     'message' => 'Girdiğin şifre yanlış.'
                 ]);
             }
+
+            RateLimiter::clear($pinLimitKey);
         }
 
         // XP kazan (giriş yapmışsa)
@@ -159,8 +177,23 @@ class CapsuleController extends Controller
         // PIN kontrolü
         if ($capsule->has_pin) {
             $inputPin = $request->input('pin');
+            $pinLimitKey = $this->pinRateLimitKey($request, $capsule);
+
+            if (RateLimiter::tooManyAttempts($pinLimitKey, 5)) {
+                return view('auth.shared-capsule', [
+                    'locked' => true,
+                    'lock_type' => 'pin',
+                    'error' => 'Çok fazla deneme yaptın. Lütfen biraz bekleyip tekrar dene.',
+                    'shareCode' => $shareCode,
+                    'capsule' => null
+                ]);
+            }
             
-            if (!$inputPin || $inputPin !== $capsule->pin_code) {
+            if (!$inputPin || !$capsule->verifyPin($inputPin)) {
+                if ($inputPin) {
+                    RateLimiter::hit($pinLimitKey, 600);
+                }
+
                 return view('auth.shared-capsule', [
                     'locked' => true,
                     'lock_type' => 'pin',
@@ -169,6 +202,8 @@ class CapsuleController extends Controller
                     'capsule' => null
                 ]);
             }
+
+            RateLimiter::clear($pinLimitKey);
         }
 
         // Görüntülenme artır
@@ -220,20 +255,9 @@ class CapsuleController extends Controller
     /**
      * Kapsül oluştur
      */
-    public function store(Request $request)
+    public function store(StoreCapsuleRequest $request)
     {
-        $validated = $request->validate([
-            'message' => 'required|string|max:1000',
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
-            'audio' => 'nullable|file|mimes:mp3,wav,ogg,m4a,webm|max:20480',
-            'unlock_date' => 'nullable|date|after_or_equal:today',
-            'pin_code' => 'nullable|numeric|digits:4',
-            'category' => 'nullable|in:memory,gift,mystery,game,anniversary,treasure',
-            'is_anniversary' => 'nullable|boolean',
-            'hint' => 'nullable|string|max:500',
-        ]);
+        $validated = $request->validated();
 
         $kapsul = new Capsule();
         $kapsul->user_id = auth()->id();
@@ -243,7 +267,7 @@ class CapsuleController extends Controller
         $kapsul->unlock_date = $validated['unlock_date'] ?? null;
         $kapsul->pin_code = $validated['pin_code'] ?? null;
         $kapsul->category = $validated['category'] ?? 'memory';
-        $kapsul->is_anniversary = $validated['is_anniversary'] ?? false;
+        $kapsul->is_anniversary = $kapsul->category === 'anniversary';
         $kapsul->hint = $validated['hint'] ?? null;
 
         // Resim işleme ve optimizasyon
@@ -276,28 +300,19 @@ class CapsuleController extends Controller
     /**
      * Kapsül güncelle
      */
-    public function update(Request $request, Capsule $capsule)
+    public function update(UpdateCapsuleRequest $request, Capsule $capsule)
     {
         if ($capsule->user_id !== auth()->id()) {
             abort(403);
         }
 
-        $validated = $request->validate([
-            'message' => 'required|string|max:1000',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
-            'audio' => 'nullable|file|mimes:mp3,wav,ogg,m4a,webm|max:20480',
-            'unlock_date' => 'nullable|date',
-            'pin_code' => 'nullable|digits:4',
-            'category' => 'nullable|in:memory,gift,mystery,game,anniversary,treasure',
-            'is_anniversary' => 'nullable|boolean',
-            'hint' => 'nullable|string|max:500',
-        ]);
+        $validated = $request->validated();
 
         $capsule->message = $validated['message'];
         $capsule->unlock_date = !empty($validated['unlock_date']) ? $validated['unlock_date'] : null;
         $capsule->pin_code = !empty($validated['pin_code']) ? $validated['pin_code'] : null;
         $capsule->category = $validated['category'] ?? $capsule->category;
-        $capsule->is_anniversary = $validated['is_anniversary'] ?? $capsule->is_anniversary;
+        $capsule->is_anniversary = $capsule->category === 'anniversary';
         $capsule->hint = $validated['hint'] ?? $capsule->hint;
 
         if ($request->hasFile('image')) {
@@ -366,9 +381,14 @@ class CapsuleController extends Controller
             Storage::disk('public')->put($path, $encoded);
             
             return $path;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             // Intervention başarısız olursa normal kaydet
             return $file->store('capsules/images', 'public');
         }
+    }
+
+    private function pinRateLimitKey(Request $request, Capsule $capsule): string
+    {
+        return 'pin-attempt:' . $capsule->id . ':' . $request->ip();
     }
 }

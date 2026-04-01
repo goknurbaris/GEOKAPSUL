@@ -440,6 +440,94 @@
 
         var popup = L.popup({ className: 'modern-popup', maxWidth: 320 });
 
+        function applyCategoryTileState(container) {
+            var labels = container.querySelectorAll('[data-category-option]');
+
+            labels.forEach(function(label) {
+                var input = label.querySelector('input[type="radio"]');
+                var tile = label.querySelector('.category-tile');
+                if (!input || !tile) return;
+
+                if (input.checked) {
+                    tile.classList.add('bg-indigo-100', 'border-indigo-400', 'text-indigo-700', 'shadow-sm', 'scale-[1.02]');
+                    tile.classList.remove('bg-slate-50', 'border-slate-200', 'text-slate-500');
+                } else {
+                    tile.classList.remove('bg-indigo-100', 'border-indigo-400', 'text-indigo-700', 'shadow-sm', 'scale-[1.02]');
+                    tile.classList.add('bg-slate-50', 'border-slate-200', 'text-slate-500');
+                }
+            });
+        }
+
+        function setupPopupFormInteractions() {
+            var popupEl = popup.getElement();
+            if (!popupEl) return;
+
+            L.DomEvent.disableClickPropagation(popupEl);
+            L.DomEvent.disableScrollPropagation(popupEl);
+
+            var form = popupEl.querySelector('form');
+            if (!form) return;
+
+            function updateCategoryDependentFields() {
+                var selectedCategory = form.querySelector('input[name="category"]:checked')?.value || 'memory';
+                var unlockInput = form.querySelector('input[name="unlock_date"]');
+                var pinInput = form.querySelector('input[name="pin_code"]');
+                var hintWrap = form.querySelector('[data-hint-wrap]');
+                var hintInput = form.querySelector('input[name="hint"]');
+                var ruleNote = form.querySelector('[data-category-rule-note]');
+
+                if (!unlockInput || !pinInput || !hintWrap || !hintInput || !ruleNote) return;
+
+                unlockInput.required = selectedCategory === 'anniversary';
+                hintInput.required = selectedCategory === 'treasure';
+
+                hintWrap.classList.toggle('hidden', selectedCategory !== 'treasure');
+
+                unlockInput.setCustomValidity('');
+                pinInput.setCustomValidity('');
+
+                if (selectedCategory === 'gift' && !unlockInput.value && !pinInput.value) {
+                    var msg = 'Hediye kategorisinde tarih kilidi veya PIN zorunludur.';
+                    unlockInput.setCustomValidity(msg);
+                    pinInput.setCustomValidity(msg);
+                }
+
+                if (selectedCategory === 'anniversary') {
+                    ruleNote.textContent = 'Yildonumu icin tarih secimi zorunlu.';
+                } else if (selectedCategory === 'treasure') {
+                    ruleNote.textContent = 'Hazine kapsulu icin ipucu girisi zorunlu.';
+                } else if (selectedCategory === 'gift') {
+                    ruleNote.textContent = 'Hediye kapsulu icin PIN veya tarih kilidi sec.';
+                } else {
+                    ruleNote.textContent = 'Kategori secimine gore kapsul davranisi degisir.';
+                }
+            }
+
+            applyCategoryTileState(form);
+            updateCategoryDependentFields();
+
+            form.querySelectorAll('[data-category-option]').forEach(function(label) {
+                var input = label.querySelector('input[type="radio"]');
+                if (!input) return;
+
+                label.addEventListener('click', function() {
+                    input.checked = true;
+                    applyCategoryTileState(form);
+                    updateCategoryDependentFields();
+                });
+
+                input.addEventListener('change', function() {
+                    applyCategoryTileState(form);
+                    updateCategoryDependentFields();
+                });
+            });
+
+            form.querySelectorAll('input[name="unlock_date"], input[name="pin_code"]').forEach(function(el) {
+                el.addEventListener('input', updateCategoryDependentFields);
+                el.addEventListener('change', updateCategoryDependentFields);
+            });
+        }
+
         function openCapsuleForm(latlng) {
             const lat = latlng.lat;
             const lng = latlng.lng;
@@ -461,40 +549,41 @@
                     <!-- Kategori Seçimi -->
                     <div>
                         <label class="font-bold text-slate-500 text-[9px] uppercase tracking-widest block mb-2 ml-1">🏷️ Kategori</label>
+                        <p data-category-rule-note class="text-[10px] text-slate-500 mb-2 ml-1">Kategori secimine gore kapsul davranisi degisir.</p>
                         <div class="grid grid-cols-3 gap-1.5">
-                            <label class="cursor-pointer">
+                            <label class="cursor-pointer" data-category-option>
                                 <input type="radio" name="category" value="memory" class="hidden peer" checked>
-                                <div class="peer-checked:bg-indigo-100 peer-checked:border-indigo-400 peer-checked:text-indigo-600 bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-indigo-300 transition-all">
+                                <div class="category-tile bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-indigo-300 transition-all">
                                     💭 Anı
                                 </div>
                             </label>
-                            <label class="cursor-pointer">
+                            <label class="cursor-pointer" data-category-option>
                                 <input type="radio" name="category" value="gift" class="hidden peer">
-                                <div class="peer-checked:bg-rose-100 peer-checked:border-rose-400 peer-checked:text-rose-600 bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-rose-300 transition-all">
+                                <div class="category-tile bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-rose-300 transition-all">
                                     🎁 Hediye
                                 </div>
                             </label>
-                            <label class="cursor-pointer">
+                            <label class="cursor-pointer" data-category-option>
                                 <input type="radio" name="category" value="mystery" class="hidden peer">
-                                <div class="peer-checked:bg-violet-100 peer-checked:border-violet-400 peer-checked:text-violet-600 bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-violet-300 transition-all">
+                                <div class="category-tile bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-violet-300 transition-all">
                                     🔮 Gizem
                                 </div>
                             </label>
-                            <label class="cursor-pointer">
+                            <label class="cursor-pointer" data-category-option>
                                 <input type="radio" name="category" value="game" class="hidden peer">
-                                <div class="peer-checked:bg-emerald-100 peer-checked:border-emerald-400 peer-checked:text-emerald-600 bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-emerald-300 transition-all">
+                                <div class="category-tile bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-emerald-300 transition-all">
                                     🎮 Oyun
                                 </div>
                             </label>
-                            <label class="cursor-pointer">
+                            <label class="cursor-pointer" data-category-option>
                                 <input type="radio" name="category" value="anniversary" class="hidden peer">
-                                <div class="peer-checked:bg-amber-100 peer-checked:border-amber-400 peer-checked:text-amber-600 bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-amber-300 transition-all">
+                                <div class="category-tile bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-amber-300 transition-all">
                                     🎂 Yıldönümü
                                 </div>
                             </label>
-                            <label class="cursor-pointer">
+                            <label class="cursor-pointer" data-category-option>
                                 <input type="radio" name="category" value="treasure" class="hidden peer">
-                                <div class="peer-checked:bg-cyan-100 peer-checked:border-cyan-400 peer-checked:text-cyan-600 bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-cyan-300 transition-all">
+                                <div class="category-tile bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-1 text-center text-[10px] font-bold text-slate-500 hover:border-cyan-300 transition-all">
                                     💎 Hazine
                                 </div>
                             </label>
@@ -510,6 +599,11 @@
                             <label class="font-bold text-slate-500 text-[9px] uppercase tracking-widest block mb-1 ml-1">🔐 PIN Kodu</label>
                             <input type="text" name="pin_code" maxlength="4" placeholder="••••" class="w-full border-2 border-slate-200 rounded-xl p-2.5 text-xs text-center tracking-widest font-bold text-slate-600 focus:ring-2 focus:ring-indigo-500 bg-slate-50 transition-all outline-none" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                         </div>
+                    </div>
+
+                    <div data-hint-wrap class="hidden">
+                        <label class="font-bold text-slate-500 text-[9px] uppercase tracking-widest block mb-1 ml-1">🧩 Hazine Ipucu</label>
+                        <input type="text" name="hint" maxlength="500" placeholder="Hazineyi bulduracak kisa bir ipucu yaz..." class="w-full border-2 border-slate-200 rounded-xl p-2.5 text-xs text-slate-600 focus:ring-2 focus:ring-indigo-500 bg-slate-50 transition-all outline-none">
                     </div>
 
                     <div class="flex gap-2">
@@ -529,6 +623,7 @@
                 </form>
             `;
             popup.setLatLng(latlng).setContent(formHtml).openOn(map);
+            setTimeout(setupPopupFormInteractions, 0);
         }
 
         map.on('click', function(e) {

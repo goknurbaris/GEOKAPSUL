@@ -313,7 +313,7 @@
                                     @if($capsule->pin_code)
                                         <div class="flex items-center gap-2 text-xs text-rose-400">
                                             <span>🔑</span>
-                                            <span class="font-mono tracking-wider">PIN: {{ $capsule->pin_code }}</span>
+                                            <span class="font-mono tracking-wider">PIN korumali</span>
                                         </div>
                                     @endif
                                 </div>
@@ -373,7 +373,7 @@
                                     </div>
                                     <div>
                                         <label class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-2 block">🔐 PIN</label>
-                                        <input type="text" name="pin_code" value="{{ $capsule->pin_code }}" maxlength="4" placeholder="••••" class="w-full bg-slate-900 border border-white/10 rounded-xl p-2.5 text-sm text-center tracking-widest font-mono text-slate-200 focus:ring-2 focus:ring-indigo-500 transition-all" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                                        <input type="text" name="pin_code" value="" maxlength="4" placeholder="Yeni PIN gir (opsiyonel)" class="w-full bg-slate-900 border border-white/10 rounded-xl p-2.5 text-sm text-center tracking-widest font-mono text-slate-200 focus:ring-2 focus:ring-indigo-500 transition-all" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                                     </div>
                                 </div>
 

@@ -4,6 +4,7 @@ use App\Models\User;
 use App\Models\Capsule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
@@ -62,9 +63,9 @@ describe('Capsule CRUD', function () {
             'pin_code' => '1234',
         ]);
 
-        $this->assertDatabaseHas('capsules', [
-            'pin_code' => '1234',
-        ]);
+        $capsule = Capsule::where('user_id', $user->id)->latest()->first();
+        expect($capsule)->not->toBeNull();
+        expect(Hash::check('1234', $capsule->pin_code))->toBeTrue();
     });
 
     test('capsule can have unlock date', function () {
@@ -135,7 +136,7 @@ describe('Capsule CRUD', function () {
 describe('Capsule Access Control', function () {
 
     test('capsule with pin requires correct pin', function () {
-        $capsule = Capsule::factory()->create(['pin_code' => '1234']);
+        $capsule = Capsule::factory()->create(['pin_code' => Hash::make('1234')]);
 
         // PIN olmadan
         $response = $this->getJson(route('capsule.show', $capsule));
@@ -151,6 +152,21 @@ describe('Capsule Access Control', function () {
         $response = $this->getJson(route('capsule.show', $capsule) . '?pin=1234');
         expect($response->json('locked'))->toBeFalse();
         expect($response->json('capsule'))->not->toBeNull();
+    });
+
+    test('capsule pin gets rate limited after too many failed attempts', function () {
+        $capsule = Capsule::factory()->create(['pin_code' => Hash::make('1234')]);
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->getJson(route('capsule.show', $capsule) . '?pin=0000')
+                ->assertOk();
+        }
+
+        $response = $this->getJson(route('capsule.show', $capsule) . '?pin=0000');
+
+        $response->assertStatus(429);
+        expect($response->json('error'))->toBe('Çok fazla deneme yaptın.');
+        expect($response->json('retry_after'))->toBeInt();
     });
 
     test('capsule with future unlock date is locked', function () {
@@ -310,6 +326,59 @@ describe('Validation', function () {
         ]);
 
         $response->assertSessionHasErrors('unlock_date');
+    });
+
+    test('anniversary category requires unlock date', function () {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('capsule.store'), [
+            'message' => 'Yildonumu kapsulu',
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
+            'category' => 'anniversary',
+        ]);
+
+        $response->assertSessionHasErrors('unlock_date');
+    });
+
+    test('treasure category requires hint', function () {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('capsule.store'), [
+            'message' => 'Hazine kapsulu',
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
+            'category' => 'treasure',
+        ]);
+
+        $response->assertSessionHasErrors('hint');
+    });
+
+    test('gift category requires pin or unlock date', function () {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('capsule.store'), [
+            'message' => 'Hediye kapsulu',
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
+            'category' => 'gift',
+        ]);
+
+        $response->assertSessionHasErrors(['unlock_date', 'pin_code']);
+    });
+
+    test('gift category can be created with pin', function () {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('capsule.store'), [
+            'message' => 'Hediye kapsulu',
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
+            'category' => 'gift',
+            'pin_code' => '1234',
+        ]);
+
+        $response->assertSessionHasNoErrors();
     });
 });
 

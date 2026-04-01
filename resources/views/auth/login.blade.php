@@ -10,7 +10,7 @@
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
         body {
             background: #020617;
             min-height: 100vh;
@@ -21,7 +21,7 @@
         .gradient-bg {
             position: fixed;
             inset: 0;
-            background: 
+            background:
                 radial-gradient(ellipse at 20% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
                 radial-gradient(ellipse at 80% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
                 radial-gradient(ellipse at 50% 50%, rgba(6, 182, 212, 0.1) 0%, transparent 60%);
@@ -37,7 +37,7 @@
         .grid-pattern {
             position: fixed;
             inset: 0;
-            background-image: 
+            background-image:
                 linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
             background-size: 60px 60px;
@@ -179,7 +179,7 @@
     <!-- Background Effects -->
     <div class="gradient-bg"></div>
     <div class="grid-pattern"></div>
-    
+
     <!-- Floating Orbs -->
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
@@ -205,10 +205,10 @@
     <!-- Main Content -->
     <div class="relative z-10 min-h-screen flex items-center justify-center p-4">
         <div class="w-full max-w-[420px]">
-            
+
             <!-- Login Card -->
             <div class="login-card rounded-3xl p-8 sm:p-10 shadow-2xl">
-                
+
                 <!-- Logo Section -->
                 <div class="text-center mb-8">
                     <div class="logo-container inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/30 mb-4">
@@ -231,8 +231,8 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                                 </svg>
                             </span>
-                            <input type="email" name="email" value="{{ old('email') }}" required autofocus 
-                                   class="form-input w-full pl-12 pr-4 py-3.5 rounded-xl text-sm" 
+                            <input type="email" name="email" value="{{ old('email') }}" required autofocus
+                                   class="form-input w-full pl-12 pr-4 py-3.5 rounded-xl text-sm"
                                    placeholder="ornek@email.com">
                         </div>
                         @error('email')
@@ -259,8 +259,8 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                                 </svg>
                             </span>
-                            <input type="password" name="password" required 
-                                   class="form-input w-full pl-12 pr-4 py-3.5 rounded-xl text-sm" 
+                            <input type="password" name="password" required
+                                   class="form-input w-full pl-12 pr-4 py-3.5 rounded-xl text-sm"
                                    placeholder="••••••••">
                         </div>
                         @error('password')
@@ -275,7 +275,7 @@
 
                     <!-- Remember Me -->
                     <div class="flex items-center gap-3">
-                        <input type="checkbox" name="remember" id="remember_me" 
+                        <input type="checkbox" name="remember" id="remember_me"
                                class="w-4 h-4 rounded border-slate-600 bg-slate-700/50 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0 cursor-pointer">
                         <label for="remember_me" class="text-sm text-slate-400 cursor-pointer select-none">Beni hatırla</label>
                     </div>

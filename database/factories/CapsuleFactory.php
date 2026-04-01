@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\Capsule;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\Hash;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Capsule>
@@ -39,7 +40,7 @@ class CapsuleFactory extends Factory
     public function withPin(string $pin = '1234'): static
     {
         return $this->state(fn (array $attributes) => [
-            'pin_code' => $pin,
+            'pin_code' => Hash::make($pin),
         ]);
     }
 

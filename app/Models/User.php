@@ -124,7 +124,9 @@ class User extends Authenticatable
      */
     public function xpForNextLevel(): int
     {
-        return (int) (100 * pow($this->level, 1.5));
+        $level = max(1, (int) $this->level);
+
+        return (int) (100 * pow($level, 1.5));
     }
 
     /**
@@ -132,13 +134,18 @@ class User extends Authenticatable
      */
     public function levelProgress(): int
     {
+        $currentLevel = max(1, (int) $this->level);
         $xpForCurrent = 0;
-        for ($i = 1; $i < $this->level; $i++) {
+        for ($i = 1; $i < $currentLevel; $i++) {
             $xpForCurrent += (int) (100 * pow($i, 1.5));
         }
         
         $xpInCurrentLevel = $this->xp - $xpForCurrent;
         $xpNeededForNext = $this->xpForNextLevel();
+
+        if ($xpNeededForNext <= 0) {
+            return 0;
+        }
         
         return min(100, (int) (($xpInCurrentLevel / $xpNeededForNext) * 100));
     }

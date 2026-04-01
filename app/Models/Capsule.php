@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class Capsule extends Model
@@ -96,6 +97,39 @@ class Capsule extends Model
     public function getHasPinAttribute(): bool
     {
         return !empty($this->pin_code);
+    }
+
+    /**
+     * PIN değerini güvenli olarak sakla.
+     */
+    public function setPinCodeAttribute(?string $value): void
+    {
+        if (empty($value)) {
+            $this->attributes['pin_code'] = null;
+            return;
+        }
+
+        $this->attributes['pin_code'] = password_get_info($value)['algo']
+            ? $value
+            : Hash::make($value);
+    }
+
+    /**
+     * PIN doğrula (eski düz metin kayıtlarla uyumlu).
+     */
+    public function verifyPin(string $inputPin): bool
+    {
+        $storedPin = (string) $this->pin_code;
+
+        if ($storedPin === '') {
+            return false;
+        }
+
+        if (password_get_info($storedPin)['algo']) {
+            return Hash::check($inputPin, $storedPin);
+        }
+
+        return hash_equals($storedPin, $inputPin);
     }
 
     /**
