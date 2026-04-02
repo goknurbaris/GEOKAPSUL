@@ -10,16 +10,16 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         [x-cloak] { display: none !important; }
-        
+
         /* Custom scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #1e293b; }
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #64748b; }
-        
+
         /* Glass effect */
         .glass {
-            background: rgba(15, 23, 42, 0.8);
+            background: rgba(14, 23, 42, 0.8);
             backdrop-filter: blur(16px) saturate(180%);
             -webkit-backdrop-filter: blur(16px) saturate(180%);
         }
@@ -125,7 +125,7 @@
 
     {{-- Toast Notifications --}}
     @if(session('success'))
-        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 4000)" 
+        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 4000)"
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="opacity-0 translate-y-2"
              x-transition:enter-end="opacity-100 translate-y-0"
@@ -178,7 +178,7 @@
                 <form action="{{ route('dashboard') }}" method="GET" class="relative">
                     <div class="relative">
                         <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
-                        <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Kapsüllerinde ara..." 
+                        <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Kapsüllerinde ara..."
                                class="w-full sm:w-96 bg-slate-800/50 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
                         @if($search)
                             <a href="{{ route('dashboard') }}" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors">✕</a>
@@ -195,8 +195,8 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 @forelse ($myCapsules as $capsule)
-                    <div x-data="{ 
-                        isEditing: false, 
+                    <div x-data="{
+                        isEditing: false,
                         isLoading: false,
                         shareUrl: '{{ $capsule->share_url }}',
                         showShareModal: false,
@@ -230,7 +230,7 @@
                     }" class="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/5 rounded-3xl shadow-xl card-hover overflow-hidden flex flex-col group relative">
 
                         {{-- Share Modal --}}
-                        <div x-cloak x-show="showShareModal" 
+                        <div x-cloak x-show="showShareModal"
                              x-transition:enter="transition ease-out duration-200"
                              x-transition:enter-start="opacity-0"
                              x-transition:enter-end="opacity-100"
@@ -257,7 +257,26 @@
                         {{-- View Mode --}}
                         <div x-show="!isEditing" class="flex flex-col h-full">
 
-                            {{-- Badges --}}
+                            {{-- Category Badge (Sol üst) --}}
+                            @php
+                                $categoryData = \App\Models\Capsule::CATEGORIES[$capsule->category] ?? \App\Models\Capsule::CATEGORIES['memory'];
+                                $categoryColors = [
+                                    'indigo' => 'bg-indigo-500/90',
+                                    'rose' => 'bg-rose-500/90',
+                                    'violet' => 'bg-violet-500/90',
+                                    'emerald' => 'bg-emerald-500/90',
+                                    'amber' => 'bg-amber-500/90',
+                                    'cyan' => 'bg-cyan-500/90',
+                                ];
+                                $categoryBgColor = $categoryColors[$categoryData['color']] ?? 'bg-indigo-500/90';
+                            @endphp
+                            <div class="absolute top-3 left-3 z-10">
+                                <span class="{{ $categoryBgColor }} backdrop-blur text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shadow-lg flex items-center gap-1">
+                                    {{ $categoryData['icon'] }} {{ $categoryData['name'] }}
+                                </span>
+                            </div>
+
+                            {{-- Badges (Sağ üst) --}}
                             <div class="absolute top-3 right-3 flex gap-2 z-10">
                                 @if($capsule->pin_code)
                                     <span class="bg-rose-500/90 backdrop-blur text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shadow-lg flex items-center gap-1">
@@ -344,12 +363,12 @@
                         </div>
 
                         {{-- Edit Mode --}}
-                        <div x-cloak x-show="isEditing" 
+                        <div x-cloak x-show="isEditing"
                              x-transition:enter="transition ease-out duration-200"
                              x-transition:enter-start="opacity-0 scale-95"
                              x-transition:enter-end="opacity-100 scale-100"
                              class="p-5 flex flex-col h-full bg-slate-800">
-                            <form action="{{ route('capsule.update', $capsule->id) }}" method="POST" enctype="multipart/form-data" 
+                            <form action="{{ route('capsule.update', $capsule->id) }}" method="POST" enctype="multipart/form-data"
                                   class="flex flex-col gap-4 h-full m-0"
                                   x-data="{ submitting: false }"
                                   @submit="submitting = true">
