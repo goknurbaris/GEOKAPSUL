@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <meta name="theme-color" content="#020617">
+    <meta name="description" content="GeoKapsul panelinde kapsullerini duzenle, ara ve paylas.">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Panelim - GeoKapsül</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -74,6 +75,16 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* Respect reduced-motion user preference */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
     </style>
 </head>
 <body class="font-sans antialiased bg-slate-950 text-slate-200 min-h-screen">
@@ -104,7 +115,7 @@
                 </a>
 
                 {{-- Profile Link --}}
-                <a href="{{ route('profile.edit') }}" class="p-2.5 sm:p-3 bg-slate-800/50 hover:bg-slate-700/50 rounded-xl sm:rounded-2xl transition-all border border-white/5 hover:border-white/10">
+                <a href="{{ route('profile.edit') }}" aria-label="Profili duzenle" class="p-2.5 sm:p-3 bg-slate-800/50 hover:bg-slate-700/50 rounded-xl sm:rounded-2xl transition-all border border-white/5 hover:border-white/10">
                     <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                     </svg>
@@ -113,7 +124,7 @@
                 {{-- Logout Button --}}
                 <form method="POST" action="{{ route('logout') }}" class="m-0">
                     @csrf
-                    <button type="submit" class="p-2.5 sm:p-3 bg-rose-500/10 hover:bg-rose-500/20 rounded-xl sm:rounded-2xl transition-all border border-rose-500/20 hover:border-rose-500/30 group">
+                    <button type="submit" aria-label="Cikis yap" class="p-2.5 sm:p-3 bg-rose-500/10 hover:bg-rose-500/20 rounded-xl sm:rounded-2xl transition-all border border-rose-500/20 hover:border-rose-500/30 group">
                         <svg class="w-5 h-5 text-rose-400 group-hover:text-rose-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                         </svg>
@@ -132,6 +143,7 @@
              x-transition:leave="transition ease-in duration-200"
              x-transition:leave-start="opacity-100 translate-y-0"
              x-transition:leave-end="opacity-0 -translate-y-2"
+             role="status" aria-live="polite"
              class="fixed top-20 right-4 z-50 bg-gradient-to-r from-emerald-600 to-cyan-600 text-white px-6 py-4 rounded-2xl shadow-2xl font-bold text-sm flex items-center gap-3 max-w-sm">
             <span class="text-xl">✅</span>
             <span>{{ session('success') }}</span>
@@ -139,7 +151,8 @@
     @endif
 
     @if($errors->any())
-        <div x-data="{ show: true }" x-show="show"
+           <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 6000)"
+               role="alert" aria-live="assertive"
              class="fixed top-20 right-4 z-50 bg-gradient-to-r from-rose-600 to-pink-600 text-white px-6 py-4 rounded-2xl shadow-2xl font-bold text-sm max-w-sm">
             <div class="flex items-center gap-3 mb-2">
                 <span class="text-xl">⚠️</span>
@@ -178,7 +191,7 @@
                 <form action="{{ route('dashboard') }}" method="GET" class="relative">
                     <div class="relative">
                         <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
-                        <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Kapsüllerinde ara..."
+                        <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Kapsüllerinde ara..." aria-label="Kapsul ara" autocomplete="off"
                                class="w-full sm:w-96 bg-slate-800/50 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
                         @if($search)
                             <a href="{{ route('dashboard') }}" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors">✕</a>
@@ -198,8 +211,9 @@
                     <div x-data="{
                         isEditing: false,
                         isLoading: false,
-                        shareUrl: '{{ $capsule->share_url }}',
+                        shareUrl: @js($capsule->share_url),
                         showShareModal: false,
+                        copyLabel: '📋 Kopyala',
                         async createShareLink() {
                             if (this.shareUrl) {
                                 this.showShareModal = true;
@@ -207,33 +221,62 @@
                             }
                             this.isLoading = true;
                             try {
-                                const res = await fetch('/kapsul/{{ $capsule->id }}/share', {
+                                const res = await fetch('{{ url('/kapsul/' . $capsule->id . '/share') }}', {
                                     method: 'POST',
                                     headers: {
                                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
                                         'Accept': 'application/json'
                                     }
                                 });
+
+                                if (!res.ok) {
+                                    throw new Error('Share endpoint failed');
+                                }
+
                                 const data = await res.json();
+                                if (!data.share_url) {
+                                    throw new Error('Share URL missing');
+                                }
                                 this.shareUrl = data.share_url;
                                 this.showShareModal = true;
                             } catch (e) {
                                 alert('Paylaşım linki oluşturulamadı');
+                            } finally {
+                                this.isLoading = false;
                             }
-                            this.isLoading = false;
                         },
-                        copyToClipboard() {
-                            navigator.clipboard.writeText(this.shareUrl);
-                            this.$refs.copyBtn.textContent = '✅ Kopyalandı!';
-                            setTimeout(() => this.$refs.copyBtn.textContent = '📋 Kopyala', 2000);
+                        async copyToClipboard() {
+                            try {
+                                if (navigator.clipboard && window.isSecureContext) {
+                                    await navigator.clipboard.writeText(this.shareUrl);
+                                } else {
+                                    const helper = document.createElement('textarea');
+                                    helper.value = this.shareUrl;
+                                    helper.style.position = 'fixed';
+                                    helper.style.opacity = '0';
+                                    document.body.appendChild(helper);
+                                    helper.focus();
+                                    helper.select();
+                                    document.execCommand('copy');
+                                    document.body.removeChild(helper);
+                                }
+                                this.copyLabel = '✅ Kopyalandi!';
+                            } catch (e) {
+                                this.copyLabel = '❌ Kopyalanamadi';
+                            }
+
+                            setTimeout(() => {
+                                this.copyLabel = '📋 Kopyala';
+                            }, 1800);
                         }
                     }" class="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/5 rounded-3xl shadow-xl card-hover overflow-hidden flex flex-col group relative">
 
                         {{-- Share Modal --}}
-                        <div x-cloak x-show="showShareModal"
+                            <div x-cloak x-show="showShareModal"
                              x-transition:enter="transition ease-out duration-200"
                              x-transition:enter-start="opacity-0"
                              x-transition:enter-end="opacity-100"
+                                @keydown.escape.window="showShareModal = false"
                              @click.self="showShareModal = false"
                              class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                             <div class="bg-slate-800 border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl"
@@ -242,13 +285,13 @@
                                     <h3 class="font-bold text-white flex items-center gap-2">
                                         <span>🔗</span> Paylaşım Linki
                                     </h3>
-                                    <button @click="showShareModal = false" class="text-slate-400 hover:text-white">✕</button>
+                                    <button @click="showShareModal = false" aria-label="Paylasim penceresini kapat" class="text-slate-400 hover:text-white">✕</button>
                                 </div>
                                 <p class="text-slate-400 text-sm mb-4">Bu linki paylaşarak kapsülünü başkalarıyla paylaşabilirsin.</p>
                                 <div class="flex gap-2">
-                                    <input type="text" :value="shareUrl" readonly class="flex-1 bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono">
+                                    <input type="text" :value="shareUrl" readonly aria-label="Paylasim linki" class="flex-1 bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono">
                                     <button @click="copyToClipboard()" x-ref="copyBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-3 rounded-xl text-sm font-bold transition-colors whitespace-nowrap">
-                                        📋 Kopyala
+                                        <span x-text="copyLabel"></span>
                                     </button>
                                 </div>
                             </div>
@@ -341,11 +384,11 @@
                             {{-- Actions --}}
                             <div class="px-5 py-4 border-t border-white/5 flex justify-between items-center bg-slate-900/50">
                                 <div class="flex items-center gap-3">
-                                    <button @click="isEditing = true" class="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 text-xs font-bold transition-colors group/btn">
+                                    <button @click="isEditing = true" aria-label="Kapsulu duzenle" class="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 text-xs font-bold transition-colors group/btn">
                                         <span class="group-hover/btn:rotate-12 transition-transform">✏️</span>
                                         Düzenle
                                     </button>
-                                    <button @click="createShareLink()" :disabled="isLoading" :class="{ 'opacity-50': isLoading }" class="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 text-xs font-bold transition-colors group/btn">
+                                    <button @click="createShareLink()" :disabled="isLoading" aria-label="Kapsulu paylas" :class="{ 'opacity-50': isLoading }" class="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 text-xs font-bold transition-colors group/btn">
                                         <span class="group-hover/btn:scale-110 transition-transform" x-text="isLoading ? '⏳' : '🔗'"></span>
                                         Paylaş
                                     </button>
@@ -354,7 +397,7 @@
                                 <form action="{{ route('capsule.destroy', $capsule->id) }}" method="POST" onsubmit="return confirm('Bu kapsülü silmek istediğine emin misin? Bu işlem geri alınamaz.');" class="m-0">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="flex items-center gap-2 text-rose-400 hover:text-rose-300 text-xs font-bold transition-colors group/btn">
+                                    <button type="submit" aria-label="Kapsulu sil" class="flex items-center gap-2 text-rose-400 hover:text-rose-300 text-xs font-bold transition-colors group/btn">
                                         <span class="group-hover/btn:scale-110 transition-transform">🗑️</span>
                                         Sil
                                     </button>
