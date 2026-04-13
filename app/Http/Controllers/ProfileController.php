@@ -12,6 +12,19 @@ use Illuminate\View\View;
 class ProfileController extends Controller
 {
     /**
+     * Display the user's profile dashboard.
+     */
+    public function show(Request $request): View
+    {
+        $user = $request->user();
+        $user->loadCount(['badges', 'capsules']);
+
+        return view('profile.show', [
+            'user' => $user,
+        ]);
+    }
+
+    /**
      * Display the user's profile form.
      */
     public function edit(Request $request): View

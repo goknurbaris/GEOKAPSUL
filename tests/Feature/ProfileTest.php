@@ -12,6 +12,16 @@ test('profile page is displayed', function () {
     $response->assertOk();
 });
 
+test('profile show page is displayed', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->get('/profile/show');
+
+    $response->assertOk();
+});
+
 test('profile information can be updated', function () {
     $user = User::factory()->create();
 
