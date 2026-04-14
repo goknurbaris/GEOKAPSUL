@@ -22,16 +22,30 @@ class CapsuleController extends Controller
     {
         $search = $request->input('search');
         $category = $request->input('category');
+        $sort = $request->input('sort', 'newest');
+        $allowedSorts = ['newest', 'oldest', 'unlock_soon'];
+        if (!in_array($sort, $allowedSorts, true)) {
+            $sort = 'newest';
+        }
         $perPage = 12;
-        
-        $myCapsules = Capsule::forUser(auth()->id())
+
+        $query = Capsule::forUser(auth()->id())
             ->search($search)
-            ->category($category)
-            ->latest()
+            ->category($category);
+
+        if ($sort === 'oldest') {
+            $query->oldest();
+        } elseif ($sort === 'unlock_soon') {
+            $query->orderByRaw('unlock_date IS NULL')->orderBy('unlock_date');
+        } else {
+            $query->latest();
+        }
+
+        $myCapsules = $query
             ->paginate($perPage)
             ->withQueryString();
 
-        return view('dashboard', compact('myCapsules', 'search', 'category'));
+        return view('dashboard', compact('myCapsules', 'search', 'category', 'sort'));
     }
 
     /**
@@ -43,11 +57,11 @@ class CapsuleController extends Controller
         $userLat = $request->input('lat');
         $userLng = $request->input('lng');
         $distanceKm = 0;
-        
+
         if ($userLat && $userLng) {
             $distance = $capsule->distanceFrom((float) $userLat, (float) $userLng);
             $distanceKm = $distance / 1000;
-            
+
             if ($distance > 100) {
                 return response()->json([
                     'locked' => true,
@@ -82,7 +96,7 @@ class CapsuleController extends Controller
         if ($capsule->has_pin) {
             $inputPin = $request->input('pin');
             $pinLimitKey = $this->pinRateLimitKey($request, $capsule);
-            
+
             if (!$inputPin) {
                 return response()->json([
                     'locked' => true,
@@ -100,7 +114,7 @@ class CapsuleController extends Controller
                     'message' => 'Lütfen biraz bekleyip tekrar dene.'
                 ], 429);
             }
-            
+
             if (!$capsule->verifyPin($inputPin)) {
                 RateLimiter::hit($pinLimitKey, 600);
 
@@ -123,7 +137,7 @@ class CapsuleController extends Controller
 
         // Başarılı - kapsül içeriğini döndür (cache ile)
         $cacheKey = "capsule_{$capsule->id}_content";
-        
+
         $content = Cache::remember($cacheKey, 3600, function () use ($capsule) {
             return [
                 'id' => $capsule->id,
@@ -163,7 +177,7 @@ class CapsuleController extends Controller
     public function showShared(Request $request, string $shareCode)
     {
         $capsule = Capsule::where('share_code', $shareCode)->firstOrFail();
-        
+
         // Aynı kontrolleri uygula (mesafe hariç - paylaşımda mesafe yok)
         if ($capsule->is_time_locked) {
             return view('auth.shared-capsule', [
@@ -188,7 +202,7 @@ class CapsuleController extends Controller
                     'capsule' => null
                 ]);
             }
-            
+
             if (!$inputPin || !$capsule->verifyPin($inputPin)) {
                 if ($inputPin) {
                     RateLimiter::hit($pinLimitKey, 600);
@@ -225,7 +239,7 @@ class CapsuleController extends Controller
         }
 
         $shareCode = $capsule->share_code ?? $capsule->generateShareCode();
-        
+
         return response()->json([
             'success' => true,
             'share_url' => route('capsule.shared', $shareCode),
@@ -239,7 +253,7 @@ class CapsuleController extends Controller
     public function addReaction(Request $request, Capsule $capsule)
     {
         $emoji = $request->input('emoji');
-        
+
         if (!in_array($emoji, Capsule::REACTION_EMOJIS)) {
             return response()->json(['error' => 'Geçersiz emoji'], 400);
         }
@@ -284,7 +298,7 @@ class CapsuleController extends Controller
 
         // XP kazan
         $gamificationResult = GamificationService::onCapsuleCreated(auth()->user(), $kapsul);
-        
+
         $message = 'Kapsül başarıyla oluşturuldu! 🎉';
         if ($gamificationResult['xp_gained'] > 0) {
             $message .= ' +' . $gamificationResult['xp_gained'] . ' XP';
@@ -293,7 +307,7 @@ class CapsuleController extends Controller
             $badgeNames = collect($gamificationResult['new_badges'])->pluck('name')->join(', ');
             $message .= ' | Yeni rozet: ' . $badgeNames;
         }
-        
+
         return back()->with('success', $message);
     }
 
@@ -330,10 +344,10 @@ class CapsuleController extends Controller
         }
 
         $capsule->save();
-        
+
         // Cache temizle
         Cache::forget("capsule_{$capsule->id}_content");
-        
+
         return back()->with('success', 'Kapsül başarıyla güncellendi! ✨');
     }
 
@@ -355,9 +369,9 @@ class CapsuleController extends Controller
 
         // Cache temizle
         Cache::forget("capsule_{$capsule->id}_content");
-        
+
         $capsule->delete();
-        
+
         return back()->with('success', 'Kapsül başarıyla silindi! 🗑️');
     }
 
@@ -368,18 +382,18 @@ class CapsuleController extends Controller
     {
         $filename = uniqid('capsule_') . '.webp';
         $path = 'capsules/images/' . $filename;
-        
+
         try {
             // Intervention Image ile optimize et
             $manager = new ImageManager(new Driver());
             $image = $manager->read($file);
-            
+
             // Max 1200px genişlik, kalite %80, WebP formatı
             $image->scaleDown(width: 1200);
             $encoded = $image->toWebp(80);
-            
+
             Storage::disk('public')->put($path, $encoded);
-            
+
             return $path;
         } catch (\Throwable $e) {
             // Intervention başarısız olursa normal kaydet

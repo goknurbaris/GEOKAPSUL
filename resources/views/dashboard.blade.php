@@ -197,6 +197,36 @@
                             <a href="{{ route('dashboard') }}" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors">✕</a>
                         @endif
                     </div>
+
+                    <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <select name="category" aria-label="Kategori filtresi" class="bg-slate-800/50 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                            <option value="">Tum kategoriler</option>
+                            @foreach(\App\Models\Capsule::CATEGORIES as $categoryKey => $categoryData)
+                                <option value="{{ $categoryKey }}" @selected(($category ?? '') === $categoryKey)>
+                                    {{ $categoryData['icon'] }} {{ $categoryData['name'] }}
+                                </option>
+                            @endforeach
+                        </select>
+
+                        <select name="sort" aria-label="Siralama" class="bg-slate-800/50 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                            <option value="newest" @selected(($sort ?? 'newest') === 'newest')>En yeni</option>
+                            <option value="oldest" @selected(($sort ?? 'newest') === 'oldest')>En eski</option>
+                            <option value="unlock_soon" @selected(($sort ?? 'newest') === 'unlock_soon')>Kilidi yaklasan</option>
+                        </select>
+
+                        <button type="submit" class="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-xl px-4 py-2.5 text-sm font-bold transition-all active:scale-95">
+                            Filtrele
+                        </button>
+                    </div>
+
+                    @if(($search ?? null) || ($category ?? null) || (($sort ?? 'newest') !== 'newest'))
+                        <div class="mt-3 flex items-center justify-between gap-3 text-xs">
+                            <div class="text-slate-400">
+                                Filtre aktif
+                            </div>
+                            <a href="{{ route('dashboard') }}" class="text-cyan-400 hover:text-cyan-300 font-semibold">Tum filtreleri temizle</a>
+                        </div>
+                    @endif
                 </form>
             </div>
         </div>
