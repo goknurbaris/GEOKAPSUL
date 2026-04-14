@@ -111,6 +111,7 @@ test('email verification status is unchanged when the email address is unchanged
 });
 
 test('user can delete their account', function () {
+    Storage::fake('public');
     $user = User::factory()->create();
 
     $response = $this
@@ -125,6 +126,28 @@ test('user can delete their account', function () {
 
     $this->assertGuest();
     $this->assertNull($user->fresh());
+});
+
+test('deleting account also removes avatar file', function () {
+    Storage::fake('public');
+
+    $user = User::factory()->create([
+        'avatar_path' => 'avatars/delete-me.jpg',
+    ]);
+
+    Storage::disk('public')->put('avatars/delete-me.jpg', 'avatar-content');
+
+    $response = $this
+        ->actingAs($user)
+        ->delete('/profile', [
+            'password' => 'password',
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect('/');
+
+    Storage::disk('public')->assertMissing('avatars/delete-me.jpg');
 });
 
 test('correct password must be provided to delete account', function () {
