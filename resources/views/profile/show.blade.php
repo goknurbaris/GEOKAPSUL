@@ -14,9 +14,13 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <section class="bg-slate-800 border border-slate-700 rounded-2xl p-6 sm:p-8 shadow">
                 <div class="flex flex-col sm:flex-row sm:items-center gap-6">
-                    <div class="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-bold text-3xl flex items-center justify-center shadow-lg">
-                        {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($user->name, 0, 1)) }}
-                    </div>
+                    @if ($user->avatar_url)
+                        <img src="{{ $user->avatar_url }}" alt="{{ $user->name }}" class="w-20 h-20 rounded-full object-cover shadow-lg ring-2 ring-slate-600">
+                    @else
+                        <div class="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-bold text-3xl flex items-center justify-center shadow-lg">
+                            {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($user->name, 0, 1)) }}
+                        </div>
+                    @endif
 
                     <div class="flex-1">
                         <h1 class="text-2xl font-bold text-white">{{ $user->name }}</h1>

@@ -181,9 +181,13 @@
                     <!-- Avatar -->
                     <div class="relative">
                         <div class="absolute inset-0 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-full blur-xl opacity-50 avatar-ring"></div>
-                        <div class="relative w-24 h-24 sm:w-28 sm:h-28 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-full flex items-center justify-center text-white font-bold text-4xl sm:text-5xl shadow-2xl">
-                            {{ strtoupper(substr($user->name, 0, 1)) }}
-                        </div>
+                        @if ($user->avatar_url)
+                            <img src="{{ $user->avatar_url }}" alt="{{ $user->name }}" class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover shadow-2xl ring-2 ring-indigo-400/30">
+                        @else
+                            <div class="relative w-24 h-24 sm:w-28 sm:h-28 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-full flex items-center justify-center text-white font-bold text-4xl sm:text-5xl shadow-2xl">
+                                {{ strtoupper(substr($user->name, 0, 1)) }}
+                            </div>
+                        @endif
                         <!-- Level Badge -->
                         <div class="absolute -bottom-1 -right-1 w-10 h-10 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg border-2 border-slate-900">
                             {{ $user->level ?? 1 }}
@@ -279,9 +283,30 @@
                             </div>
                         </div>
 
-                        <form method="POST" action="{{ route('profile.update') }}" class="space-y-5">
+                        <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="space-y-5">
                             @csrf
                             @method('patch')
+
+                            <div class="grid sm:grid-cols-2 gap-5">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-300 mb-2">Profil Fotoğrafı</label>
+                                    <input type="file" name="avatar" accept=".jpg,.jpeg,.png,.webp"
+                                           class="form-input w-full px-4 py-3 rounded-xl text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-500/20 file:px-3 file:py-2 file:text-indigo-300 file:cursor-pointer">
+                                    <p class="mt-2 text-xs text-slate-500">JPG, PNG veya WEBP • Maksimum 2MB</p>
+                                    @error('avatar')
+                                        <p class="mt-2 text-sm text-rose-400">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <div class="flex items-end">
+                                    @if ($user->avatar_path)
+                                        <label class="inline-flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                                            <input type="checkbox" name="remove_avatar" value="1" class="rounded border-slate-600 bg-slate-700 text-rose-500 focus:ring-rose-500">
+                                            Profil fotoğrafını kaldır
+                                        </label>
+                                    @endif
+                                </div>
+                            </div>
 
                             <div class="grid sm:grid-cols-2 gap-5">
                                 <div>

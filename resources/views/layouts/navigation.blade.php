@@ -23,9 +23,13 @@
                 <x-dropdown align="right" width="64" contentClasses="py-2 bg-slate-800 border border-slate-700">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center gap-3 px-3 py-2 border border-slate-700 text-sm leading-4 font-medium rounded-xl text-slate-200 bg-slate-800 hover:bg-slate-700 focus:outline-none transition ease-in-out duration-150">
-                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center font-semibold">
-                                {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr(Auth::user()->name, 0, 1)) }}
-                            </div>
+                            @if (Auth::user()->avatar_url)
+                                <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" class="w-9 h-9 rounded-full object-cover ring-2 ring-slate-600">
+                            @else
+                                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center font-semibold">
+                                    {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr(Auth::user()->name, 0, 1)) }}
+                                </div>
+                            @endif
 
                             <div class="text-start">
                                 <p class="text-sm font-semibold text-slate-100">{{ Auth::user()->name }}</p>

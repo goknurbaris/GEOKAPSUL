@@ -56,9 +56,13 @@
             @auth
             <div class="glass-card rounded-2xl p-6 mb-8">
                 <div class="flex flex-col sm:flex-row items-center gap-6">
-                    <div class="w-20 h-20 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-full flex items-center justify-center text-3xl font-bold text-white">
-                        {{ strtoupper(substr($user->name, 0, 1)) }}
-                    </div>
+                    @if ($user->avatar_url)
+                        <img src="{{ $user->avatar_url }}" alt="{{ $user->name }}" class="w-20 h-20 rounded-full object-cover ring-2 ring-indigo-500/40">
+                    @else
+                        <div class="w-20 h-20 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-full flex items-center justify-center text-3xl font-bold text-white">
+                            {{ strtoupper(substr($user->name, 0, 1)) }}
+                        </div>
+                    @endif
                     <div class="flex-1 text-center sm:text-left">
                         <h2 class="text-xl font-bold text-white">{{ $user->name }}</h2>
                         <p class="text-indigo-400 text-sm">{{ $user->level_title }} • Seviye {{ $user->level }}</p>
