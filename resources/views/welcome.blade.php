@@ -479,12 +479,14 @@
                 if (!unlockInput || !pinInput || !hintWrap || !hintInput || !ruleNote) return;
 
                 unlockInput.required = selectedCategory === 'anniversary';
-                hintInput.required = selectedCategory === 'treasure';
+                pinInput.required = selectedCategory === 'mystery' || selectedCategory === 'game';
+                hintInput.required = selectedCategory === 'treasure' || selectedCategory === 'game';
 
-                hintWrap.classList.toggle('hidden', selectedCategory !== 'treasure');
+                hintWrap.classList.toggle('hidden', selectedCategory !== 'treasure' && selectedCategory !== 'game');
 
                 unlockInput.setCustomValidity('');
                 pinInput.setCustomValidity('');
+                hintInput.setCustomValidity('');
 
                 if (selectedCategory === 'gift' && !unlockInput.value && !pinInput.value) {
                     var msg = 'Hediye kategorisinde tarih kilidi veya PIN zorunludur.';
@@ -492,14 +494,36 @@
                     pinInput.setCustomValidity(msg);
                 }
 
+                if (selectedCategory === 'mystery' && !pinInput.value) {
+                    pinInput.setCustomValidity('Gizem kategorisinde PIN kodu zorunludur.');
+                }
+
+                if (selectedCategory === 'game') {
+                    if (!pinInput.value) {
+                        pinInput.setCustomValidity('Oyun kategorisinde PIN kodu zorunludur.');
+                    }
+
+                    if (!hintInput.value) {
+                        hintInput.setCustomValidity('Oyun kategorisinde görev/ipucu metni zorunludur.');
+                    }
+                }
+
+                if (selectedCategory === 'treasure' && !unlockInput.value) {
+                    unlockInput.setCustomValidity('Hazine kategorisinde açılış tarihi zorunludur.');
+                }
+
                 if (selectedCategory === 'anniversary') {
                     ruleNote.textContent = 'Yildonumu icin tarih secimi zorunlu.';
                 } else if (selectedCategory === 'treasure') {
-                    ruleNote.textContent = 'Hazine kapsulu icin ipucu girisi zorunlu.';
+                    ruleNote.textContent = 'Hazine kapsulu icin ipucu ve tarih secimi zorunlu.';
                 } else if (selectedCategory === 'gift') {
                     ruleNote.textContent = 'Hediye kapsulu icin PIN veya tarih kilidi sec.';
+                } else if (selectedCategory === 'mystery') {
+                    ruleNote.textContent = 'Gizem kapsulu PIN ile acilir, PIN kodu zorunlu.';
+                } else if (selectedCategory === 'game') {
+                    ruleNote.textContent = 'Oyun kapsulu icin hem PIN hem gorev/ipucu metni zorunlu.';
                 } else {
-                    ruleNote.textContent = 'Kategori secimine gore kapsul davranisi degisir.';
+                    ruleNote.textContent = 'Ani kapsulunde ek kilit veya ipucu zorunlu degildir.';
                 }
             }
 
@@ -522,7 +546,7 @@
                 });
             });
 
-            form.querySelectorAll('input[name="unlock_date"], input[name="pin_code"]').forEach(function(el) {
+            form.querySelectorAll('input[name="unlock_date"], input[name="pin_code"], input[name="hint"]').forEach(function(el) {
                 el.addEventListener('input', updateCategoryDependentFields);
                 el.addEventListener('change', updateCategoryDependentFields);
             });

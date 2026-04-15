@@ -37,8 +37,28 @@ class StoreCapsuleRequest extends FormRequest
                 $validator->errors()->add('unlock_date', 'Yıldönümü kategorisinde açılış tarihi zorunludur.');
             }
 
-            if ($category === 'treasure' && !$this->filled('hint')) {
-                $validator->errors()->add('hint', 'Hazine kategorisinde ipucu alanı zorunludur.');
+            if ($category === 'mystery' && !$this->filled('pin_code')) {
+                $validator->errors()->add('pin_code', 'Gizem kategorisinde PIN kodu zorunludur.');
+            }
+
+            if ($category === 'game') {
+                if (!$this->filled('pin_code')) {
+                    $validator->errors()->add('pin_code', 'Oyun kategorisinde PIN kodu zorunludur.');
+                }
+
+                if (!$this->filled('hint')) {
+                    $validator->errors()->add('hint', 'Oyun kategorisinde görev/ipucu metni zorunludur.');
+                }
+            }
+
+            if ($category === 'treasure') {
+                if (!$this->filled('hint')) {
+                    $validator->errors()->add('hint', 'Hazine kategorisinde ipucu alanı zorunludur.');
+                }
+
+                if (!$this->filled('unlock_date')) {
+                    $validator->errors()->add('unlock_date', 'Hazine kategorisinde açılış tarihi zorunludur.');
+                }
             }
 
             if ($category === 'gift' && !$this->filled('unlock_date') && !$this->filled('pin_code')) {

@@ -494,6 +494,14 @@
                                     </div>
                                 </div>
 
+                                <div>
+                                    <label class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-2 block">🧩 İpucu / Görev Metni</label>
+                                    <input type="text" name="hint" value="{{ $capsule->hint ?? '' }}" maxlength="500" placeholder="Kategoriye özel ipucu/gorev metni (opsiyonel)" class="w-full bg-slate-900 border border-white/10 rounded-xl p-2.5 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 transition-all">
+                                    <p class="mt-1 text-[10px] text-slate-500">
+                                        Gizem: PIN zorunlu · Oyun: PIN + ipucu zorunlu · Hazine: tarih + ipucu zorunlu.
+                                    </p>
+                                </div>
+
                                 <div class="space-y-3">
                                     <div>
                                         <label class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-2 block">📸 Yeni Fotoğraf</label>

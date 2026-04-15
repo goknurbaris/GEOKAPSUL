@@ -428,6 +428,32 @@ describe('Validation', function () {
         $response->assertSessionHasErrors('unlock_date');
     });
 
+    test('mystery category requires pin code', function () {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('capsule.store'), [
+            'message' => 'Gizem kapsulu',
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
+            'category' => 'mystery',
+        ]);
+
+        $response->assertSessionHasErrors('pin_code');
+    });
+
+    test('game category requires both pin code and hint', function () {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('capsule.store'), [
+            'message' => 'Oyun kapsulu',
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
+            'category' => 'game',
+        ]);
+
+        $response->assertSessionHasErrors(['pin_code', 'hint']);
+    });
+
     test('treasure category requires hint', function () {
         $user = User::factory()->create();
 
@@ -439,6 +465,20 @@ describe('Validation', function () {
         ]);
 
         $response->assertSessionHasErrors('hint');
+    });
+
+    test('treasure category also requires unlock date', function () {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('capsule.store'), [
+            'message' => 'Hazine kapsulu',
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
+            'category' => 'treasure',
+            'hint' => 'Agacin dibine bak',
+        ]);
+
+        $response->assertSessionHasErrors('unlock_date');
     });
 
     test('gift category requires pin or unlock date', function () {

@@ -19,7 +19,7 @@ class UpdateCapsuleRequest extends FormRequest
             'message' => 'required|string|max:1000',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg,m4a,webm|max:20480',
-            'unlock_date' => 'nullable|date',
+            'unlock_date' => 'nullable|date|after_or_equal:today',
             'pin_code' => 'nullable|digits:4',
             'category' => 'nullable|in:memory,gift,mystery,game,anniversary,treasure',
             'is_anniversary' => 'nullable|boolean',
@@ -50,8 +50,28 @@ class UpdateCapsuleRequest extends FormRequest
                 $validator->errors()->add('unlock_date', 'Yıldönümü kategorisinde açılış tarihi zorunludur.');
             }
 
-            if ($category === 'treasure' && !$hasHint) {
-                $validator->errors()->add('hint', 'Hazine kategorisinde ipucu alanı zorunludur.');
+            if ($category === 'mystery' && !$hasPin) {
+                $validator->errors()->add('pin_code', 'Gizem kategorisinde PIN kodu zorunludur.');
+            }
+
+            if ($category === 'game') {
+                if (!$hasPin) {
+                    $validator->errors()->add('pin_code', 'Oyun kategorisinde PIN kodu zorunludur.');
+                }
+
+                if (!$hasHint) {
+                    $validator->errors()->add('hint', 'Oyun kategorisinde görev/ipucu metni zorunludur.');
+                }
+            }
+
+            if ($category === 'treasure') {
+                if (!$hasHint) {
+                    $validator->errors()->add('hint', 'Hazine kategorisinde ipucu alanı zorunludur.');
+                }
+
+                if (!$hasUnlockDate) {
+                    $validator->errors()->add('unlock_date', 'Hazine kategorisinde açılış tarihi zorunludur.');
+                }
             }
 
             if ($category === 'gift' && !$hasUnlockDate && !$hasPin) {

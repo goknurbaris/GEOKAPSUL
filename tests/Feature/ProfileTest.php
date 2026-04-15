@@ -54,7 +54,7 @@ test('user can upload avatar while updating profile', function () {
         ->patch('/profile', [
             'name' => 'Avatar User',
             'email' => $user->email,
-            'avatar' => UploadedFile::fake()->image('avatar.jpg'),
+            'avatar' => UploadedFile::fake()->image('avatar.jpg', 300, 300),
         ]);
 
     $response
