@@ -200,7 +200,7 @@
 
                     <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <select name="category" aria-label="Kategori filtresi" class="bg-slate-800/50 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
-                            <option value="">Tum kategoriler</option>
+                            <option value="">Tüm kategoriler</option>
                             @foreach(\App\Models\Capsule::CATEGORIES as $categoryKey => $categoryData)
                                 <option value="{{ $categoryKey }}" @selected(($category ?? '') === $categoryKey)>
                                     {{ $categoryData['icon'] }} {{ $categoryData['name'] }}
@@ -208,10 +208,10 @@
                             @endforeach
                         </select>
 
-                        <select name="sort" aria-label="Siralama" class="bg-slate-800/50 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                        <select name="sort" aria-label="Sıralama" class="bg-slate-800/50 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
                             <option value="newest" @selected(($sort ?? 'newest') === 'newest')>En yeni</option>
                             <option value="oldest" @selected(($sort ?? 'newest') === 'oldest')>En eski</option>
-                            <option value="unlock_soon" @selected(($sort ?? 'newest') === 'unlock_soon')>Kilidi yaklasan</option>
+                            <option value="unlock_soon" @selected(($sort ?? 'newest') === 'unlock_soon')>Kilidi yaklaşan</option>
                         </select>
 
                         <button type="submit" class="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-xl px-4 py-2.5 text-sm font-bold transition-all active:scale-95">
@@ -220,11 +220,36 @@
                     </div>
 
                     @if(($search ?? null) || ($category ?? null) || (($sort ?? 'newest') !== 'newest'))
-                        <div class="mt-3 flex items-center justify-between gap-3 text-xs">
-                            <div class="text-slate-400">
-                                Filtre aktif
+                        <div class="mt-3 space-y-2">
+                            <div class="flex flex-wrap items-center gap-2 text-xs">
+                                <span class="text-slate-500 font-medium">Aktif filtreler:</span>
+
+                                @if($search)
+                                    <a href="{{ route('dashboard', ['category' => $category, 'sort' => $sort]) }}"
+                                       class="inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-cyan-300">
+                                        Arama: "{{ $search }}" <span>✕</span>
+                                    </a>
+                                @endif
+
+                                @if($category)
+                                    <a href="{{ route('dashboard', ['search' => $search, 'sort' => $sort]) }}"
+                                       class="inline-flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-violet-300">
+                                        Kategori: {{ \App\Models\Capsule::CATEGORIES[$category]['name'] ?? $category }} <span>✕</span>
+                                    </a>
+                                @endif
+
+                                @if(($sort ?? 'newest') !== 'newest')
+                                    <a href="{{ route('dashboard', ['search' => $search, 'category' => $category, 'sort' => 'newest']) }}"
+                                       class="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-300">
+                                        Sıralama: {{ $sort === 'oldest' ? 'En eski' : 'Kilidi yaklaşan' }} <span>✕</span>
+                                    </a>
+                                @endif
                             </div>
-                            <a href="{{ route('dashboard') }}" class="text-cyan-400 hover:text-cyan-300 font-semibold">Tum filtreleri temizle</a>
+
+                            <div class="flex items-center justify-between gap-3 text-xs">
+                                <span class="text-slate-500">Filtreleri tek tek veya toplu temizleyebilirsin.</span>
+                                <a href="{{ route('dashboard') }}" class="text-cyan-400 hover:text-cyan-300 font-semibold">Tüm filtreleri temizle</a>
+                            </div>
                         </div>
                     @endif
                 </form>

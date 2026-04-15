@@ -93,6 +93,42 @@ test('user can remove avatar while updating profile', function () {
     Storage::disk('public')->assertMissing('avatars/old-avatar.jpg');
 });
 
+test('profile update rejects non-image avatar files', function () {
+    Storage::fake('public');
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->from('/profile')
+        ->patch('/profile', [
+            'name' => $user->name,
+            'email' => $user->email,
+            'avatar' => UploadedFile::fake()->create('avatar.pdf', 128, 'application/pdf'),
+        ]);
+
+    $response
+        ->assertSessionHasErrors('avatar')
+        ->assertRedirect('/profile');
+});
+
+test('profile update rejects oversized avatar files', function () {
+    Storage::fake('public');
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->from('/profile')
+        ->patch('/profile', [
+            'name' => $user->name,
+            'email' => $user->email,
+            'avatar' => UploadedFile::fake()->create('avatar.jpg', 4096, 'image/jpeg'),
+        ]);
+
+    $response
+        ->assertSessionHasErrors('avatar')
+        ->assertRedirect('/profile');
+});
+
 test('email verification status is unchanged when the email address is unchanged', function () {
     $user = User::factory()->create();
 

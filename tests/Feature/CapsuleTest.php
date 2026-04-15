@@ -275,6 +275,93 @@ describe('Dashboard', function () {
 
         expect($response->viewData('myCapsules')->perPage())->toBe(12);
     });
+
+    test('dashboard category filter limits capsules by selected category', function () {
+        $user = User::factory()->create();
+
+        Capsule::factory()->create([
+            'user_id' => $user->id,
+            'category' => 'memory',
+            'message' => 'Anı kapsülü',
+        ]);
+        Capsule::factory()->create([
+            'user_id' => $user->id,
+            'category' => 'gift',
+            'message' => 'Hediye kapsülü',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('dashboard', ['category' => 'gift']));
+
+        expect($response->viewData('myCapsules')->total())->toBe(1);
+        expect($response->viewData('category'))->toBe('gift');
+    });
+
+    test('dashboard supports oldest sort order', function () {
+        $user = User::factory()->create();
+
+        Capsule::factory()->create([
+            'user_id' => $user->id,
+            'message' => 'Yeni kapsül',
+            'created_at' => now(),
+        ]);
+        Capsule::factory()->create([
+            'user_id' => $user->id,
+            'message' => 'Eski kapsül',
+            'created_at' => now()->subDay(),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('dashboard', ['sort' => 'oldest']));
+
+        $capsules = $response->viewData('myCapsules')->values();
+        expect($capsules->first()->message)->toBe('Eski kapsül');
+    });
+
+    test('dashboard supports unlock soon sort order', function () {
+        $user = User::factory()->create();
+
+        Capsule::factory()->create([
+            'user_id' => $user->id,
+            'message' => 'Yakın tarih',
+            'unlock_date' => now()->addDay()->format('Y-m-d'),
+        ]);
+        Capsule::factory()->create([
+            'user_id' => $user->id,
+            'message' => 'Uzak tarih',
+            'unlock_date' => now()->addDays(7)->format('Y-m-d'),
+        ]);
+        Capsule::factory()->create([
+            'user_id' => $user->id,
+            'message' => 'Tarihsiz',
+            'unlock_date' => null,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('dashboard', ['sort' => 'unlock_soon']));
+
+        $capsules = $response->viewData('myCapsules')->values();
+        expect($capsules->first()->message)->toBe('Yakın tarih');
+        expect($capsules->last()->message)->toBe('Tarihsiz');
+    });
+
+    test('dashboard falls back to newest sort for invalid sort value', function () {
+        $user = User::factory()->create();
+
+        Capsule::factory()->create([
+            'user_id' => $user->id,
+            'message' => 'Eski kayıt',
+            'created_at' => now()->subDay(),
+        ]);
+        Capsule::factory()->create([
+            'user_id' => $user->id,
+            'message' => 'Yeni kayıt',
+            'created_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('dashboard', ['sort' => 'unknown-value']));
+
+        $capsules = $response->viewData('myCapsules')->values();
+        expect($response->viewData('sort'))->toBe('newest');
+        expect($capsules->first()->message)->toBe('Yeni kayıt');
+    });
 });
 
 describe('Validation', function () {

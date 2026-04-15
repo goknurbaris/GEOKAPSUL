@@ -287,6 +287,13 @@
                             @csrf
                             @method('patch')
 
+                            @if ($errors->has('avatar'))
+                                <div class="rounded-xl border border-rose-500/40 bg-rose-500/10 p-4">
+                                    <p class="text-sm font-semibold text-rose-300 mb-1">Profil fotoğrafı yüklenemedi</p>
+                                    <p class="text-sm text-rose-200">{{ $errors->first('avatar') }}</p>
+                                </div>
+                            @endif
+
                             <div class="grid sm:grid-cols-2 gap-5">
                                 <div>
                                     <label class="block text-sm font-medium text-slate-300 mb-2">Profil Fotoğrafı</label>
