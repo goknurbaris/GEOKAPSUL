@@ -242,6 +242,19 @@ class Capsule extends Model
     }
 
     /**
+     * Kategoriye göre açılma mesafe limiti (metre)
+     */
+    public function requiredDistanceMeters(): int
+    {
+        return match ($this->category) {
+            'game' => 50,
+            'treasure' => 30,
+            'mystery' => 75,
+            default => 100,
+        };
+    }
+
+    /**
      * Scope: Sayfalama için
      */
     public function scopeForUser($query, $userId)

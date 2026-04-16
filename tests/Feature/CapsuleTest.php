@@ -202,6 +202,19 @@ describe('Capsule Access Control', function () {
         expect($response->json('locked'))->toBeTrue();
         expect($response->json('lock_type'))->toBe('distance');
     });
+
+    test('game category uses stricter distance threshold', function () {
+        $capsule = Capsule::factory()->create([
+            'category' => 'game',
+            'latitude' => 41.0082,
+            'longitude' => 28.9784,
+        ]);
+
+        $response = $this->getJson(route('capsule.show', $capsule) . '?lat=41.0088&lng=28.9784');
+
+        expect($response->json('locked'))->toBeTrue();
+        expect($response->json('required_distance'))->toBe(50);
+    });
 });
 
 describe('Capsule Sharing', function () {

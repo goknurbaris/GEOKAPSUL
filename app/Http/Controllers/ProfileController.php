@@ -6,8 +6,10 @@ use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -80,15 +82,15 @@ class ProfileController extends Controller
         ]);
 
         $user = $request->user();
-        $avatarPath = $user->avatar_path;
-
         Auth::logout();
 
-        $user->delete();
+        DB::transaction(function () use ($user): void {
+            if ($user->avatar_path && Storage::disk('public')->exists($user->avatar_path) && !Storage::disk('public')->delete($user->avatar_path)) {
+                throw new RuntimeException('Profil fotoğrafı silinemedi.');
+            }
 
-        if ($avatarPath) {
-            Storage::disk('public')->delete($avatarPath);
-        }
+            $user->delete();
+        });
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

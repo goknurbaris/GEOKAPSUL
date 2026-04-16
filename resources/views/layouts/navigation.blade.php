@@ -1,4 +1,35 @@
-<nav x-data="{ open: false }" class="bg-slate-900 border-b border-slate-700">
+<nav x-data="{
+    open: false,
+    notificationsOpen: false,
+    notifications: [],
+    unreadCount: 0,
+    loadingNotifications: false,
+    async loadNotifications() {
+        this.loadingNotifications = true;
+        try {
+            const response = await fetch('{{ route('api.notifications') }}', {
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!response.ok) throw new Error('notifications fetch failed');
+            const data = await response.json();
+            this.notifications = data.items || [];
+            this.unreadCount = data.unread_count || 0;
+        } finally {
+            this.loadingNotifications = false;
+        }
+    },
+    async markAllNotificationsRead() {
+        await fetch('{{ route('api.notifications.read-all') }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
+                'Accept': 'application/json'
+            }
+        });
+        this.unreadCount = 0;
+        this.notifications = this.notifications.map(item => ({ ...item, read_at: item.read_at ?? new Date().toISOString() }));
+    }
+}" class="bg-slate-900 border-b border-slate-700">
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
@@ -19,7 +50,39 @@
             </div>
 
             <!-- Settings Dropdown -->
-            <div class="hidden sm:flex sm:items-center sm:ms-6">
+            <div class="hidden sm:flex sm:items-center sm:ms-6 gap-3">
+                <div class="relative">
+                    <button @click="notificationsOpen = !notificationsOpen; if (notificationsOpen && notifications.length === 0) loadNotifications()"
+                            class="relative inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                        <span x-show="unreadCount > 0" class="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center" x-text="unreadCount"></span>
+                    </button>
+
+                    <div x-show="notificationsOpen" @click.outside="notificationsOpen = false" x-cloak
+                         class="absolute right-0 mt-2 w-80 rounded-xl border border-slate-700 bg-slate-800 shadow-2xl z-50">
+                        <div class="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+                            <p class="text-sm font-semibold text-slate-100">Bildirimler</p>
+                            <button @click="markAllNotificationsRead()" class="text-xs text-cyan-300 hover:text-cyan-200">Tümünü okundu yap</button>
+                        </div>
+                        <div class="max-h-80 overflow-auto">
+                            <template x-if="loadingNotifications">
+                                <p class="px-4 py-3 text-sm text-slate-400">Yükleniyor...</p>
+                            </template>
+                            <template x-if="!loadingNotifications && notifications.length === 0">
+                                <p class="px-4 py-3 text-sm text-slate-400">Henüz bildirim yok.</p>
+                            </template>
+                            <template x-for="item in notifications" :key="item.id">
+                                <a :href="item.action_url || '{{ route('dashboard') }}'" class="block px-4 py-3 border-b border-slate-700/60 hover:bg-slate-700/40">
+                                    <p class="text-sm font-medium text-slate-100" x-text="item.title"></p>
+                                    <p class="text-xs text-slate-400 mt-1" x-text="item.body"></p>
+                                </a>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
                 <x-dropdown align="right" width="64" contentClasses="py-2 bg-slate-800 border border-slate-700">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center gap-3 px-3 py-2 border border-slate-700 text-sm leading-4 font-medium rounded-xl text-slate-200 bg-slate-800 hover:bg-slate-700 focus:outline-none transition ease-in-out duration-150">

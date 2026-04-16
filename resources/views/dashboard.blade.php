@@ -468,7 +468,53 @@
                              class="p-5 flex flex-col h-full bg-slate-800">
                             <form action="{{ route('capsule.update', $capsule->id) }}" method="POST" enctype="multipart/form-data"
                                   class="flex flex-col gap-4 h-full m-0"
-                                  x-data="{ submitting: false }"
+                                  x-data="{
+                                      submitting: false,
+                                      category: '{{ $capsule->category }}',
+                                      validateCategoryRules() {
+                                          const unlockInput = this.$refs.unlockDate;
+                                          const pinInput = this.$refs.pinCode;
+                                          const hintInput = this.$refs.hintText;
+                                          if (!unlockInput || !pinInput || !hintInput) return;
+
+                                          unlockInput.setCustomValidity('');
+                                          pinInput.setCustomValidity('');
+                                          hintInput.setCustomValidity('');
+
+                                          if (this.category === 'gift' && !unlockInput.value && !pinInput.value) {
+                                              const msg = 'Hediye kategorisinde tarih kilidi veya PIN zorunludur.';
+                                              unlockInput.setCustomValidity(msg);
+                                              pinInput.setCustomValidity(msg);
+                                          }
+
+                                          if (this.category === 'mystery' && !pinInput.value) {
+                                              pinInput.setCustomValidity('Gizem kategorisinde PIN kodu zorunludur.');
+                                          }
+
+                                          if (this.category === 'game') {
+                                              if (!pinInput.value) {
+                                                  pinInput.setCustomValidity('Oyun kategorisinde PIN kodu zorunludur.');
+                                              }
+                                              if (!hintInput.value) {
+                                                  hintInput.setCustomValidity('Oyun kategorisinde görev/ipucu metni zorunludur.');
+                                              }
+                                          }
+
+                                          if (this.category === 'anniversary' && !unlockInput.value) {
+                                              unlockInput.setCustomValidity('Yıldönümü kategorisinde açılış tarihi zorunludur.');
+                                          }
+
+                                          if (this.category === 'treasure') {
+                                              if (!unlockInput.value) {
+                                                  unlockInput.setCustomValidity('Hazine kategorisinde açılış tarihi zorunludur.');
+                                              }
+                                              if (!hintInput.value) {
+                                                  hintInput.setCustomValidity('Hazine kategorisinde ipucu zorunludur.');
+                                              }
+                                          }
+                                      }
+                                  }"
+                                  x-init="validateCategoryRules()"
                                   @submit="submitting = true">
                                 @csrf
                                 @method('PATCH')
@@ -483,20 +529,30 @@
                                     <textarea name="message" required rows="3" class="w-full bg-slate-900 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none transition-all">{{ $capsule->message }}</textarea>
                                 </div>
 
+                                <div>
+                                    <label class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-2 block">🏷️ Kategori</label>
+                                    <select name="category" x-model="category" @change="validateCategoryRules()"
+                                            class="w-full bg-slate-900 border border-white/10 rounded-xl p-2.5 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 transition-all">
+                                        @foreach(\App\Models\Capsule::CATEGORIES as $categoryKey => $categoryData)
+                                            <option value="{{ $categoryKey }}">{{ $categoryData['icon'] }} {{ $categoryData['name'] }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
                                 <div class="grid grid-cols-2 gap-3">
                                     <div>
                                         <label class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-2 block">📅 Tarih Kilidi</label>
-                                        <input type="date" name="unlock_date" value="{{ $capsule->unlock_date ? $capsule->unlock_date->format('Y-m-d') : '' }}" class="w-full bg-slate-900 border border-white/10 rounded-xl p-2.5 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 transition-all">
+                                        <input x-ref="unlockDate" @input="validateCategoryRules()" type="date" name="unlock_date" value="{{ $capsule->unlock_date ? $capsule->unlock_date->format('Y-m-d') : '' }}" class="w-full bg-slate-900 border border-white/10 rounded-xl p-2.5 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 transition-all">
                                     </div>
                                     <div>
                                         <label class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-2 block">🔐 PIN</label>
-                                        <input type="text" name="pin_code" value="" maxlength="4" placeholder="Yeni PIN gir (opsiyonel)" class="w-full bg-slate-900 border border-white/10 rounded-xl p-2.5 text-sm text-center tracking-widest font-mono text-slate-200 focus:ring-2 focus:ring-indigo-500 transition-all" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                                        <input x-ref="pinCode" @input="validateCategoryRules()" type="text" name="pin_code" value="" maxlength="4" placeholder="Yeni PIN gir (opsiyonel)" class="w-full bg-slate-900 border border-white/10 rounded-xl p-2.5 text-sm text-center tracking-widest font-mono text-slate-200 focus:ring-2 focus:ring-indigo-500 transition-all" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                                     </div>
                                 </div>
 
                                 <div>
                                     <label class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-2 block">🧩 İpucu / Görev Metni</label>
-                                    <input type="text" name="hint" value="{{ $capsule->hint ?? '' }}" maxlength="500" placeholder="Kategoriye özel ipucu/gorev metni (opsiyonel)" class="w-full bg-slate-900 border border-white/10 rounded-xl p-2.5 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 transition-all">
+                                    <input x-ref="hintText" @input="validateCategoryRules()" type="text" name="hint" value="{{ $capsule->hint ?? '' }}" maxlength="500" placeholder="Kategoriye özel ipucu/gorev metni (opsiyonel)" class="w-full bg-slate-900 border border-white/10 rounded-xl p-2.5 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 transition-all">
                                     <p class="mt-1 text-[10px] text-slate-500">
                                         Gizem: PIN zorunlu · Oyun: PIN + ipucu zorunlu · Hazine: tarih + ipucu zorunlu.
                                     </p>

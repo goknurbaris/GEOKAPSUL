@@ -78,6 +78,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Kullanıcı bildirimleri
+     */
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class)->latest();
+    }
+
+    /**
      * XP ekle ve seviye kontrolü yap
      */
     public function addXp(int $amount): void

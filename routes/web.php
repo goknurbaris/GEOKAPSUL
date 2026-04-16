@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CapsuleController;
 use App\Http\Controllers\GamificationController;
+use App\Http\Controllers\NotificationController;
 use App\Models\Capsule;
 use Illuminate\Support\Facades\Route;
 
@@ -73,6 +74,10 @@ Route::middleware('auth')->group(function () {
     
     // Gamification API
     Route::get('/api/stats', [GamificationController::class, 'stats'])->name('api.stats');
+
+    // Notifications API
+    Route::get('/api/notifications', [NotificationController::class, 'index'])->name('api.notifications');
+    Route::post('/api/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('api.notifications.read-all');
 
 });
 

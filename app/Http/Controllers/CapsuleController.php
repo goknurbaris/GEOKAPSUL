@@ -6,6 +6,7 @@ use App\Http\Requests\StoreCapsuleRequest;
 use App\Http\Requests\UpdateCapsuleRequest;
 use Illuminate\Http\Request;
 use App\Models\Capsule;
+use App\Models\Notification;
 use App\Services\GamificationService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Cache;
@@ -53,20 +54,22 @@ class CapsuleController extends Controller
      */
     public function show(Request $request, Capsule $capsule)
     {
-        // Server-side mesafe kontrolü (100 metre)
+        // Server-side mesafe kontrolü (kategoriye göre dinamik)
         $userLat = $request->input('lat');
         $userLng = $request->input('lng');
         $distanceKm = 0;
+        $requiredDistance = $capsule->requiredDistanceMeters();
 
         if ($userLat && $userLng) {
             $distance = $capsule->distanceFrom((float) $userLat, (float) $userLng);
             $distanceKm = $distance / 1000;
 
-            if ($distance > 100) {
+            if ($distance > $requiredDistance) {
                 return response()->json([
                     'locked' => true,
                     'lock_type' => 'distance',
                     'distance' => round($distance),
+                    'required_distance' => $requiredDistance,
                     'message' => 'Bu kapsülü açmak için ' . round($distance) . ' metre daha yaklaşmalısın.'
                 ]);
             }
@@ -295,6 +298,18 @@ class CapsuleController extends Controller
         }
 
         $kapsul->save();
+
+        if (in_array($kapsul->category, ['anniversary', 'gift'], true)) {
+            Notification::create([
+                'user_id' => auth()->id(),
+                'type' => 'capsule-created',
+                'title' => 'Kapsül bildirimi',
+                'body' => $kapsul->category === 'anniversary'
+                    ? 'Yıldönümü kapsülün oluşturuldu. Tarih gelince açılabilir olacak.'
+                    : 'Hediye kapsülün oluşturuldu. Paylaşmayı unutma!',
+                'action_url' => route('dashboard'),
+            ]);
+        }
 
         // XP kazan
         $gamificationResult = GamificationService::onCapsuleCreated(auth()->user(), $kapsul);
