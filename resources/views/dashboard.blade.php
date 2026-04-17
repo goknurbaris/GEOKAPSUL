@@ -300,6 +300,7 @@
                         copyLabel: '📋 Kopyala',
                         shareStatus: '',
                         shareStatusType: 'info',
+                        shareExpiresAt: @js(optional($capsule->share_expires_at)?->toIso8601String()),
                         async createShareLink() {
                             if (this.shareUrl) {
                                 this.showShareModal = true;
@@ -324,9 +325,34 @@
                                     throw new Error('Share URL missing');
                                 }
                                 this.shareUrl = data.share_url;
+                                this.shareExpiresAt = data.share_expires_at || null;
                                 this.showShareModal = true;
                             } catch (e) {
                                 this.setShareStatus('Paylaşım linki oluşturulamadı.', 'error');
+                            } finally {
+                                this.isLoading = false;
+                            }
+                        },
+                        async revokeShareLink() {
+                            if (!this.shareUrl) return;
+                            this.isLoading = true;
+                            try {
+                                const res = await fetch('{{ url('/kapsul/' . $capsule->id . '/share') }}', {
+                                    method: 'DELETE',
+                                    headers: {
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                        'Accept': 'application/json'
+                                    }
+                                });
+                                if (!res.ok) {
+                                    throw new Error('Revoke endpoint failed');
+                                }
+                                this.shareUrl = null;
+                                this.shareExpiresAt = null;
+                                this.showShareModal = false;
+                                this.setShareStatus('Paylaşım linki iptal edildi.', 'success');
+                            } catch (e) {
+                                this.setShareStatus('Paylaşım linki iptal edilemedi.', 'error');
                             } finally {
                                 this.isLoading = false;
                             }
@@ -412,6 +438,9 @@
                                          <span x-text="copyLabel"></span>
                                      </button>
                                  </div>
+                                 <p class="text-xs text-slate-400 mt-2" x-show="shareExpiresAt">
+                                     Geçerlilik: <span class="text-slate-300" x-text="new Date(shareExpiresAt).toLocaleString('tr-TR')"></span>
+                                 </p>
                                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
                                      <button @click="openShareLink()" class="bg-slate-700 hover:bg-slate-600 text-slate-100 px-3 py-2 rounded-xl text-xs font-semibold transition-colors">
                                          🔍 Linki Aç
@@ -420,6 +449,9 @@
                                          📲 Cihazda Paylaş
                                      </button>
                                  </div>
+                                 <button @click="revokeShareLink()" :disabled="isLoading" class="w-full mt-2 bg-rose-600/80 hover:bg-rose-600 text-white px-3 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-60">
+                                     🚫 Linki İptal Et
+                                 </button>
                                  <p x-show="shareStatus" x-cloak
                                     class="mt-3 text-xs font-semibold"
                                     :class="shareStatusType === 'success' ? 'text-emerald-300' : 'text-rose-300'"

@@ -69,6 +69,7 @@ Route::middleware('auth')->group(function () {
     
     // Paylaşım linki oluştur
     Route::post('/kapsul/{capsule}/share', [CapsuleController::class, 'createShareLink'])->name('capsule.share');
+    Route::delete('/kapsul/{capsule}/share', [CapsuleController::class, 'revokeShareLink'])->name('capsule.share.revoke');
     
     // Kapsüle tepki ekle
     Route::post('/kapsul/{capsule}/react', [CapsuleController::class, 'addReaction'])->name('capsule.react');

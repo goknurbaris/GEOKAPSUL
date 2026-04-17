@@ -81,6 +81,15 @@
                         </div>
                     </div>
 
+                @elseif($locked && $lock_type === 'expired')
+                    <div class="text-center py-8">
+                        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-500/20 flex items-center justify-center">
+                            <span class="text-3xl">⌛</span>
+                        </div>
+                        <h2 class="text-xl font-bold text-white mb-2">Paylaşım Süresi Doldu</h2>
+                        <p class="text-slate-400">Bu kapsül linkinin süresi dolmuş.</p>
+                    </div>
+
                 @elseif($locked && $lock_type === 'pin')
                     <!-- PIN Girişi -->
                     <div class="text-center py-4">

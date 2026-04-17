@@ -212,6 +212,18 @@ class CapsuleController extends Controller
     {
         $capsule = Capsule::where('share_code', $shareCode)->firstOrFail();
 
+        if ($capsule->share_revoked_at) {
+            abort(404);
+        }
+
+        if ($capsule->share_expires_at && now()->greaterThan($capsule->share_expires_at)) {
+            return view('auth.shared-capsule', [
+                'locked' => true,
+                'lock_type' => 'expired',
+                'capsule' => null,
+            ]);
+        }
+
         // Aynı kontrolleri uygula (mesafe hariç - paylaşımda mesafe yok)
         if ($capsule->is_time_locked) {
             return view('auth.shared-capsule', [
@@ -272,12 +284,39 @@ class CapsuleController extends Controller
             abort(403);
         }
 
-        $shareCode = $capsule->share_code ?? $capsule->generateShareCode();
+        if (!$capsule->share_code) {
+            $capsule->generateShareCode();
+        } elseif ($capsule->share_revoked_at || !$capsule->share_expires_at || now()->greaterThan($capsule->share_expires_at)) {
+            $capsule->share_expires_at = now()->addDays(30);
+            $capsule->share_revoked_at = null;
+            $capsule->save();
+        }
+
+        $shareCode = $capsule->share_code;
 
         return response()->json([
             'success' => true,
             'share_url' => route('capsule.shared', $shareCode),
-            'share_code' => $shareCode
+            'share_code' => $shareCode,
+            'share_expires_at' => optional($capsule->fresh()->share_expires_at)?->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Paylaşım linkini iptal et
+     */
+    public function revokeShareLink(Capsule $capsule)
+    {
+        if ($capsule->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $capsule->share_revoked_at = now();
+        $capsule->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Paylaşım linki iptal edildi.',
         ]);
     }
 

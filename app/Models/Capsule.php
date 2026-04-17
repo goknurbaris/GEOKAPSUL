@@ -23,6 +23,8 @@ class Capsule extends Model
 
     protected $casts = [
         'unlock_date' => 'date:Y-m-d',
+        'share_expires_at' => 'datetime',
+        'share_revoked_at' => 'datetime',
         'latitude' => 'float',
         'longitude' => 'float',
         'views' => 'integer',
@@ -78,6 +80,8 @@ class Capsule extends Model
         } while (static::where('share_code', $code)->exists());
 
         $this->share_code = $code;
+        $this->share_expires_at = now()->addDays(30);
+        $this->share_revoked_at = null;
         $this->save();
 
         return $code;

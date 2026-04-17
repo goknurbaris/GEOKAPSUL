@@ -262,9 +262,11 @@ describe('Capsule Sharing', function () {
         $response->assertOk();
         expect($response->json('success'))->toBeTrue();
         expect($response->json('share_url'))->toContain('/s/');
+        expect($response->json('share_expires_at'))->not->toBeNull();
 
         $capsule->refresh();
         expect($capsule->share_code)->not->toBeNull();
+        expect($capsule->share_expires_at)->not->toBeNull();
     });
 
     test('existing share link is reused when creating share link again', function () {
@@ -298,6 +300,63 @@ describe('Capsule Sharing', function () {
         $response = $this->get(route('capsule.shared', $capsule->share_code));
 
         $response->assertOk();
+    });
+
+    test('expired shared capsule link shows expired lock screen', function () {
+        $capsule = Capsule::factory()->create([
+            'share_code' => 'EXPIRED123456',
+            'share_expires_at' => now()->subMinute(),
+        ]);
+
+        $response = $this->get(route('capsule.shared', $capsule->share_code));
+
+        $response->assertOk();
+        $response->assertSee('Paylaşım Süresi Doldu');
+    });
+
+    test('revoked shared capsule link is not accessible', function () {
+        $capsule = Capsule::factory()->create([
+            'share_code' => 'REVOKED12345',
+            'share_expires_at' => now()->addDay(),
+            'share_revoked_at' => now(),
+        ]);
+
+        $this->get(route('capsule.shared', $capsule->share_code))
+            ->assertNotFound();
+    });
+
+    test('owner can revoke share link', function () {
+        $user = User::factory()->create();
+        $capsule = Capsule::factory()->create([
+            'user_id' => $user->id,
+            'share_code' => 'REVABLE12345',
+            'share_expires_at' => now()->addDays(5),
+            'share_revoked_at' => null,
+        ]);
+
+        $response = $this->actingAs($user)->deleteJson(route('capsule.share.revoke', $capsule));
+
+        $response->assertOk();
+        $capsule->refresh();
+        expect($capsule->share_revoked_at)->not->toBeNull();
+    });
+
+    test('recreating share link after revoke reactivates link and extends expiry', function () {
+        $user = User::factory()->create();
+        $capsule = Capsule::factory()->create([
+            'user_id' => $user->id,
+            'share_code' => 'OLDREV123456',
+            'share_expires_at' => now()->subDay(),
+            'share_revoked_at' => now()->subHour(),
+        ]);
+
+        $response = $this->actingAs($user)->postJson(route('capsule.share', $capsule));
+
+        $response->assertOk();
+        $capsule->refresh();
+        expect($capsule->share_revoked_at)->toBeNull();
+        expect($capsule->share_expires_at)->not->toBeNull();
+        expect($capsule->share_expires_at->isFuture())->toBeTrue();
     });
 });
 
