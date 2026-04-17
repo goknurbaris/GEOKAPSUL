@@ -356,6 +356,62 @@
             console.log('Konum alınamadı:', e.message);
         });
 
+        function setupMiniGameStep(id) {
+            var screen = document.getElementById('pin-screen-' + id);
+            if (!screen) return;
+
+            var challengeWrap = document.getElementById('game-challenge-' + id);
+            var answerInput = document.getElementById('game-answer-' + id);
+            var challengeError = document.getElementById('game-error-' + id);
+            var pinWrap = document.getElementById('pin-fields-' + id);
+            var pinInput = document.getElementById('pin-input-' + id);
+            var unlockBtn = document.getElementById('unlock-btn-' + id);
+
+            if (!challengeWrap || !answerInput || !pinWrap || !pinInput || !unlockBtn) return;
+
+            var a = Math.floor(Math.random() * 7) + 3;
+            var b = Math.floor(Math.random() * 7) + 2;
+            var result = a + b;
+            var questionEl = document.getElementById('game-question-' + id);
+            if (questionEl) {
+                questionEl.textContent = a + ' + ' + b + ' = ?';
+            }
+
+            pinWrap.classList.add('hidden');
+            unlockBtn.disabled = true;
+            unlockBtn.classList.add('opacity-60', 'cursor-not-allowed');
+
+            var validateChallenge = function() {
+                var parsed = Number(answerInput.value);
+                var solved = Number.isInteger(parsed) && parsed === result;
+
+                if (solved) {
+                    challengeWrap.classList.add('hidden');
+                    pinWrap.classList.remove('hidden');
+                    unlockBtn.disabled = false;
+                    unlockBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+                    pinInput.focus();
+                    if (challengeError) challengeError.classList.add('hidden');
+                    return;
+                }
+
+                if (answerInput.value.length > 0 && challengeError) {
+                    challengeError.classList.remove('hidden');
+                }
+                pinWrap.classList.add('hidden');
+                unlockBtn.disabled = true;
+                unlockBtn.classList.add('opacity-60', 'cursor-not-allowed');
+            };
+
+            answerInput.addEventListener('input', validateChallenge);
+            answerInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    validateChallenge();
+                }
+            });
+        }
+
         window.verifyPin = function(id, inputElement) {
             let pinValue = inputElement.value;
             let errorMsg = document.getElementById('pin-error-' + id);
@@ -364,7 +420,10 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.locked && data.error) {
-                        errorMsg.classList.remove('hidden');
+                        if (errorMsg) {
+                            errorMsg.innerText = data.message || data.error || 'Hatalı şifre!';
+                            errorMsg.classList.remove('hidden');
+                        }
                         inputElement.classList.add('border-rose-500', 'bg-rose-50');
                         inputElement.value = '';
                         setTimeout(() => {
@@ -409,18 +468,34 @@
                             </div>`;
                             marker.bindPopup(html, {className: 'modern-popup'}).openPopup();
                         } else if (data.lock_type === 'pin') {
+                            const isGameCategory = data.category === 'game';
                             let html = `<div class="text-center min-w-[260px] p-2">
                                 <div id="pin-screen-${id}">
                                     <div class="w-14 h-14 bg-gradient-to-br from-rose-400 to-pink-400 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl shadow-lg">🔐</div>
                                     <h3 class="text-rose-600 font-black text-base mb-1 uppercase tracking-widest">Şifreli Kapsül</h3>
-                                    <p class="text-slate-500 font-medium text-xs mb-4">Bu anıyı görmek için PIN gir</p>
-                                    <input type="password" id="pin-input-${id}" maxlength="4" placeholder="• • • •" class="w-32 text-center text-2xl tracking-[0.5em] bg-slate-100 border-2 border-slate-200 rounded-2xl p-3 shadow-inner focus:ring-2 focus:ring-rose-500 focus:border-rose-500 mx-auto block mb-2 font-black text-slate-700 transition-all outline-none">
+                                    <p class="text-slate-500 font-medium text-xs mb-4">${isGameCategory ? 'Önce mini görevi çöz, sonra PIN gir' : 'Bu anıyı görmek için PIN gir'}</p>
+                                    ${isGameCategory ? `
+                                        <div id="game-challenge-${id}" class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 mb-3">
+                                            <p class="text-[10px] text-emerald-700 font-black uppercase tracking-widest mb-2">Mini Oyun</p>
+                                            <p class="text-emerald-800 font-black text-lg mb-2" id="game-question-${id}">4 + 5 = ?</p>
+                                            <input type="text" id="game-answer-${id}" inputmode="numeric" placeholder="Cevap" class="w-24 text-center text-lg bg-white border border-emerald-300 rounded-xl p-2 mx-auto block font-black text-emerald-800 outline-none" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                                            <p id="game-error-${id}" class="text-rose-500 text-[10px] font-bold uppercase mt-2 hidden">Cevap yanlış, tekrar dene.</p>
+                                        </div>
+                                    ` : ''}
+                                    <div id="pin-fields-${id}">
+                                        <input type="password" id="pin-input-${id}" maxlength="4" placeholder="• • • •" class="w-32 text-center text-2xl tracking-[0.5em] bg-slate-100 border-2 border-slate-200 rounded-2xl p-3 shadow-inner focus:ring-2 focus:ring-rose-500 focus:border-rose-500 mx-auto block mb-2 font-black text-slate-700 transition-all outline-none">
+                                    </div>
                                     <p id="pin-error-${id}" class="text-rose-500 text-[10px] font-bold uppercase mb-3 hidden">Hatalı şifre!</p>
-                                    <button onclick="verifyPin(${id}, document.getElementById('pin-input-${id}'))" class="w-full bg-gradient-to-r from-rose-500 to-pink-500 text-white py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg hover:shadow-rose-500/30 active:scale-95 transition-all">Kilidi Aç</button>
+                                    <button id="unlock-btn-${id}" onclick="verifyPin(${id}, document.getElementById('pin-input-${id}'))" class="w-full bg-gradient-to-r from-rose-500 to-pink-500 text-white py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg hover:shadow-rose-500/30 active:scale-95 transition-all">Kilidi Aç</button>
                                 </div>
                                 <div id="capsule-content-${id}" class="hidden"></div>
                             </div>`;
                             marker.bindPopup(html, {className: 'modern-popup'}).openPopup();
+                            if (isGameCategory) {
+                                setTimeout(function() {
+                                    setupMiniGameStep(id);
+                                }, 0);
+                            }
                         }
                     } else {
                         let capsule = data.capsule;

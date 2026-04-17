@@ -126,6 +126,7 @@ class CapsuleController extends Controller
                 return response()->json([
                     'locked' => true,
                     'lock_type' => 'pin',
+                    'category' => $capsule->category,
                     'message' => $capsule->category === 'game'
                         ? 'Bu oyun kapsülü PIN korumalı. Görevi çözmek için doğru kodu gir.'
                         : 'Bu kapsül şifre korumalı.'
@@ -136,6 +137,7 @@ class CapsuleController extends Controller
                 return response()->json([
                     'locked' => true,
                     'lock_type' => 'pin',
+                    'category' => $capsule->category,
                     'error' => 'Çok fazla deneme yaptın.',
                     'retry_after' => RateLimiter::availableIn($pinLimitKey),
                     'message' => 'Lütfen biraz bekleyip tekrar dene.'
@@ -149,6 +151,7 @@ class CapsuleController extends Controller
                 return response()->json([
                     'locked' => true,
                     'lock_type' => 'pin',
+                    'category' => $capsule->category,
                     'error' => 'Hatalı şifre!',
                     'attempts_left' => $attemptsLeft,
                     'message' => $capsule->category === 'game'

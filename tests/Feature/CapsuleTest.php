@@ -187,6 +187,22 @@ describe('Capsule Access Control', function () {
         expect($response->json('error'))->toBe('Çok fazla deneme yaptın.');
     });
 
+    test('pin lock responses include capsule category', function () {
+        $capsule = Capsule::factory()->create([
+            'category' => 'game',
+            'pin_code' => Hash::make('1234'),
+            'hint' => 'Kategori yaniti',
+        ]);
+
+        $withoutPin = $this->getJson(route('capsule.show', $capsule));
+        $withoutPin->assertOk();
+        expect($withoutPin->json('category'))->toBe('game');
+
+        $wrongPin = $this->getJson(route('capsule.show', $capsule) . '?pin=0000');
+        $wrongPin->assertOk();
+        expect($wrongPin->json('category'))->toBe('game');
+    });
+
     test('capsule with future unlock date is locked', function () {
         $capsule = Capsule::factory()->create([
             'unlock_date' => now()->addDays(7),
