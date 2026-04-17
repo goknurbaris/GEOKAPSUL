@@ -187,6 +187,35 @@
                     </div>
                 </div>
 
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <article class="bg-slate-800/40 border border-white/10 rounded-xl px-4 py-3">
+                        <p class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Toplam Kapsül</p>
+                        <p class="text-2xl font-black text-indigo-300 mt-1">{{ $totalCapsules ?? 0 }}</p>
+                    </article>
+                    <article class="bg-slate-800/40 border border-white/10 rounded-xl px-4 py-3">
+                        <p class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Tarih Kilitli</p>
+                        <p class="text-2xl font-black text-amber-300 mt-1">{{ $scheduledCapsules ?? 0 }}</p>
+                    </article>
+                    <article class="bg-slate-800/40 border border-white/10 rounded-xl px-4 py-3">
+                        <p class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">PIN Korumalı</p>
+                        <p class="text-2xl font-black text-cyan-300 mt-1">{{ $pinProtectedCapsules ?? 0 }}</p>
+                    </article>
+                    <article class="bg-slate-800/40 border border-white/10 rounded-xl px-4 py-3">
+                        <p class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">En Popüler Kategori</p>
+                        @php
+                            $topCategoryKey = !empty($categorySummary ?? []) ? array_key_first(array_slice($categorySummary, 0, 1, true)) : null;
+                            if (!empty($categorySummary ?? [])) {
+                                arsort($categorySummary);
+                                $topCategoryKey = array_key_first($categorySummary);
+                            }
+                            $topCategory = $topCategoryKey ? (\App\Models\Capsule::CATEGORIES[$topCategoryKey] ?? null) : null;
+                        @endphp
+                        <p class="text-lg font-black text-violet-300 mt-1">
+                            {{ $topCategory ? $topCategory['icon'] . ' ' . $topCategory['name'] : '—' }}
+                        </p>
+                    </article>
+                </div>
+
                 {{-- Search Bar --}}
                 <form action="{{ route('dashboard') }}" method="GET" class="relative">
                     <div class="relative">
@@ -471,6 +500,7 @@
                                   x-data="{
                                       submitting: false,
                                       category: '{{ $capsule->category }}',
+                                      showHint: true,
                                       validateCategoryRules() {
                                           const unlockInput = this.$refs.unlockDate;
                                           const pinInput = this.$refs.pinCode;
@@ -480,6 +510,8 @@
                                           unlockInput.setCustomValidity('');
                                           pinInput.setCustomValidity('');
                                           hintInput.setCustomValidity('');
+
+                                          this.showHint = this.category === 'treasure' || this.category === 'game' || this.category === 'mystery';
 
                                           if (this.category === 'gift' && !unlockInput.value && !pinInput.value) {
                                               const msg = 'Hediye kategorisinde tarih kilidi veya PIN zorunludur.';
@@ -550,7 +582,7 @@
                                     </div>
                                 </div>
 
-                                <div>
+                                <div x-show="showHint" x-cloak>
                                     <label class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-2 block">🧩 İpucu / Görev Metni</label>
                                     <input x-ref="hintText" @input="validateCategoryRules()" type="text" name="hint" value="{{ $capsule->hint ?? '' }}" maxlength="500" placeholder="Kategoriye özel ipucu/gorev metni (opsiyonel)" class="w-full bg-slate-900 border border-white/10 rounded-xl p-2.5 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 transition-all">
                                     <p class="mt-1 text-[10px] text-slate-500">

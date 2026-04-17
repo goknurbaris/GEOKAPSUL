@@ -182,7 +182,7 @@
                     <div class="relative">
                         <div class="absolute inset-0 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-full blur-xl opacity-50 avatar-ring"></div>
                         @if ($user->avatar_url)
-                            <img src="{{ $user->avatar_url }}" alt="{{ $user->name }}" class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover shadow-2xl ring-2 ring-indigo-400/30">
+                            <img src="{{ $user->avatar_url }}" alt="{{ $user->name }}" loading="lazy" class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover shadow-2xl ring-2 ring-indigo-400/30">
                         @else
                             <div class="relative w-24 h-24 sm:w-28 sm:h-28 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-full flex items-center justify-center text-white font-bold text-4xl sm:text-5xl shadow-2xl">
                                 {{ strtoupper(substr($user->name, 0, 1)) }}

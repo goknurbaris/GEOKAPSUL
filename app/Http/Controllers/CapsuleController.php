@@ -46,7 +46,27 @@ class CapsuleController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
-        return view('dashboard', compact('myCapsules', 'search', 'category', 'sort'));
+        $baseQuery = Capsule::forUser(auth()->id());
+        $totalCapsules = (int) $baseQuery->count();
+        $scheduledCapsules = (int) (clone $baseQuery)->whereNotNull('unlock_date')->count();
+        $pinProtectedCapsules = (int) (clone $baseQuery)->whereNotNull('pin_code')->count();
+
+        $categorySummary = (clone $baseQuery)
+            ->selectRaw('category, COUNT(*) as total')
+            ->groupBy('category')
+            ->pluck('total', 'category')
+            ->toArray();
+
+        return view('dashboard', compact(
+            'myCapsules',
+            'search',
+            'category',
+            'sort',
+            'totalCapsules',
+            'scheduledCapsules',
+            'pinProtectedCapsules',
+            'categorySummary'
+        ));
     }
 
     /**
@@ -99,16 +119,20 @@ class CapsuleController extends Controller
         if ($capsule->has_pin) {
             $inputPin = $request->input('pin');
             $pinLimitKey = $this->pinRateLimitKey($request, $capsule);
+            $maxAttempts = $capsule->category === 'game' ? 3 : 5;
+            $lockSeconds = $capsule->category === 'game' ? 900 : 600;
 
             if (!$inputPin) {
                 return response()->json([
                     'locked' => true,
                     'lock_type' => 'pin',
-                    'message' => 'Bu kapsül şifre korumalı.'
+                    'message' => $capsule->category === 'game'
+                        ? 'Bu oyun kapsülü PIN korumalı. Görevi çözmek için doğru kodu gir.'
+                        : 'Bu kapsül şifre korumalı.'
                 ]);
             }
 
-            if (RateLimiter::tooManyAttempts($pinLimitKey, 5)) {
+            if (RateLimiter::tooManyAttempts($pinLimitKey, $maxAttempts)) {
                 return response()->json([
                     'locked' => true,
                     'lock_type' => 'pin',
@@ -119,13 +143,17 @@ class CapsuleController extends Controller
             }
 
             if (!$capsule->verifyPin($inputPin)) {
-                RateLimiter::hit($pinLimitKey, 600);
+                RateLimiter::hit($pinLimitKey, $lockSeconds);
+                $attemptsLeft = max(0, $maxAttempts - RateLimiter::attempts($pinLimitKey));
 
                 return response()->json([
                     'locked' => true,
                     'lock_type' => 'pin',
                     'error' => 'Hatalı şifre!',
-                    'message' => 'Girdiğin şifre yanlış.'
+                    'attempts_left' => $attemptsLeft,
+                    'message' => $capsule->category === 'game'
+                        ? 'Kod yanlış. Kalan deneme hakkın: ' . $attemptsLeft
+                        : 'Girdiğin şifre yanlış.'
                 ]);
             }
 

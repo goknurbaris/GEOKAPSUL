@@ -4,10 +4,13 @@
     notifications: [],
     unreadCount: 0,
     loadingNotifications: false,
+    notificationFilter: 'all',
     async loadNotifications() {
         this.loadingNotifications = true;
         try {
-            const response = await fetch('{{ route('api.notifications') }}', {
+            const params = new URLSearchParams();
+            if (this.notificationFilter !== 'all') params.set('filter', this.notificationFilter);
+            const response = await fetch('{{ route('api.notifications') }}?' + params.toString(), {
                 headers: { 'Accept': 'application/json' }
             });
             if (!response.ok) throw new Error('notifications fetch failed');
@@ -66,6 +69,11 @@
                             <p class="text-sm font-semibold text-slate-100">Bildirimler</p>
                             <button @click="markAllNotificationsRead()" class="text-xs text-cyan-300 hover:text-cyan-200">Tümünü okundu yap</button>
                         </div>
+                        <div class="px-4 py-2 border-b border-slate-700 flex items-center gap-2 text-xs">
+                            <button @click="notificationFilter = 'all'; loadNotifications()" :class="notificationFilter === 'all' ? 'bg-slate-600 text-white' : 'text-slate-300'" class="px-2 py-1 rounded-md">Tümü</button>
+                            <button @click="notificationFilter = 'unread'; loadNotifications()" :class="notificationFilter === 'unread' ? 'bg-slate-600 text-white' : 'text-slate-300'" class="px-2 py-1 rounded-md">Okunmamış</button>
+                            <button @click="notificationFilter = 'capsule-created'; loadNotifications()" :class="notificationFilter === 'capsule-created' ? 'bg-slate-600 text-white' : 'text-slate-300'" class="px-2 py-1 rounded-md">Oluşturma</button>
+                        </div>
                         <div class="max-h-80 overflow-auto">
                             <template x-if="loadingNotifications">
                                 <p class="px-4 py-3 text-sm text-slate-400">Yükleniyor...</p>
@@ -75,8 +83,12 @@
                             </template>
                             <template x-for="item in notifications" :key="item.id">
                                 <a :href="item.action_url || '{{ route('dashboard') }}'" class="block px-4 py-3 border-b border-slate-700/60 hover:bg-slate-700/40">
-                                    <p class="text-sm font-medium text-slate-100" x-text="item.title"></p>
+                                    <div class="flex items-center justify-between gap-2">
+                                        <p class="text-sm font-medium text-slate-100" x-text="item.title"></p>
+                                        <span x-show="!item.read_at" class="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300">Yeni</span>
+                                    </div>
                                     <p class="text-xs text-slate-400 mt-1" x-text="item.body"></p>
+                                    <p class="text-[10px] text-slate-500 mt-1" x-text="new Date(item.created_at).toLocaleString('tr-TR')"></p>
                                 </a>
                             </template>
                         </div>
@@ -87,7 +99,7 @@
                     <x-slot name="trigger">
                         <button class="inline-flex items-center gap-3 px-3 py-2 border border-slate-700 text-sm leading-4 font-medium rounded-xl text-slate-200 bg-slate-800 hover:bg-slate-700 focus:outline-none transition ease-in-out duration-150">
                             @if (Auth::user()->avatar_url)
-                                <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" class="w-9 h-9 rounded-full object-cover ring-2 ring-slate-600">
+                                <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" loading="lazy" class="w-9 h-9 rounded-full object-cover ring-2 ring-slate-600">
                             @else
                                 <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center font-semibold">
                                     {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr(Auth::user()->name, 0, 1)) }}

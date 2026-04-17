@@ -10,10 +10,20 @@ class NotificationController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $notifications = $request->user()
+        $filter = $request->string('filter')->toString();
+        $notificationsQuery = $request->user()
             ->notifications()
+            ->select(['id', 'type', 'title', 'body', 'action_url', 'read_at', 'created_at']);
+
+        if ($filter === 'unread') {
+            $notificationsQuery->whereNull('read_at');
+        } elseif (in_array($filter, ['capsule-created', 'capsule-opened'], true)) {
+            $notificationsQuery->where('type', $filter);
+        }
+
+        $notifications = $notificationsQuery
             ->limit(10)
-            ->get(['id', 'type', 'title', 'body', 'action_url', 'read_at', 'created_at']);
+            ->get();
 
         return response()->json([
             'items' => $notifications,

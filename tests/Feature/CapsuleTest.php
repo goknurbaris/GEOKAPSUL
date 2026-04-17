@@ -169,6 +169,24 @@ describe('Capsule Access Control', function () {
         expect($response->json('retry_after'))->toBeInt();
     });
 
+    test('game capsule pin gets rate limited after three failed attempts', function () {
+        $capsule = Capsule::factory()->create([
+            'category' => 'game',
+            'pin_code' => Hash::make('1234'),
+            'hint' => 'Dort haneli bir kod',
+        ]);
+
+        for ($i = 0; $i < 3; $i++) {
+            $this->getJson(route('capsule.show', $capsule) . '?pin=0000')
+                ->assertOk()
+                ->assertJsonPath('attempts_left', 2 - $i);
+        }
+
+        $response = $this->getJson(route('capsule.show', $capsule) . '?pin=0000');
+        $response->assertStatus(429);
+        expect($response->json('error'))->toBe('Çok fazla deneme yaptın.');
+    });
+
     test('capsule with future unlock date is locked', function () {
         $capsule = Capsule::factory()->create([
             'unlock_date' => now()->addDays(7),
@@ -374,6 +392,32 @@ describe('Dashboard', function () {
         $capsules = $response->viewData('myCapsules')->values();
         expect($response->viewData('sort'))->toBe('newest');
         expect($capsules->first()->message)->toBe('Yeni kayıt');
+    });
+
+    test('dashboard analytics cards data is provided', function () {
+        $user = User::factory()->create();
+
+        Capsule::factory()->create([
+            'user_id' => $user->id,
+            'category' => 'memory',
+            'pin_code' => Hash::make('1234'),
+        ]);
+        Capsule::factory()->create([
+            'user_id' => $user->id,
+            'category' => 'gift',
+            'unlock_date' => now()->addDay()->format('Y-m-d'),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('dashboard'));
+
+        expect($response->viewData('totalCapsules'))->toBe(2);
+        expect($response->viewData('scheduledCapsules'))->toBe(1);
+        expect($response->viewData('pinProtectedCapsules'))->toBe(1);
+
+        $summary = $response->viewData('categorySummary');
+        expect($summary)->toBeArray();
+        expect($summary['memory'] ?? 0)->toBe(1);
+        expect($summary['gift'] ?? 0)->toBe(1);
     });
 });
 
