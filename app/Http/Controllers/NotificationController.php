@@ -10,24 +10,44 @@ class NotificationController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $filter = $request->string('filter')->toString();
+        $legacyFilter = $request->string('filter')->toString();
+        $readFilter = $request->string('read')->toString();
+        $typeFilter = $request->string('type')->toString();
+        $allowedTypes = ['capsule-created', 'capsule-opened', 'capsule-unlock-reminder'];
+        $perPage = min(30, max(1, $request->integer('per_page', 10)));
+
+        if ($legacyFilter === 'unread' && $readFilter === '') {
+            $readFilter = 'unread';
+        } elseif (in_array($legacyFilter, $allowedTypes, true) && $typeFilter === '') {
+            $typeFilter = $legacyFilter;
+        }
+
         $notificationsQuery = $request->user()
             ->notifications()
             ->select(['id', 'type', 'title', 'body', 'action_url', 'read_at', 'created_at']);
 
-        if ($filter === 'unread') {
+        if ($readFilter === 'unread') {
             $notificationsQuery->whereNull('read_at');
-        } elseif (in_array($filter, ['capsule-created', 'capsule-opened'], true)) {
-            $notificationsQuery->where('type', $filter);
+        } elseif ($readFilter === 'read') {
+            $notificationsQuery->whereNotNull('read_at');
         }
 
-        $notifications = $notificationsQuery
-            ->limit(10)
-            ->get();
+        if (in_array($typeFilter, $allowedTypes, true)) {
+            $notificationsQuery->where('type', $typeFilter);
+        }
+
+        $notifications = $notificationsQuery->paginate($perPage);
 
         return response()->json([
-            'items' => $notifications,
+            'items' => $notifications->items(),
             'unread_count' => $request->user()->notifications()->whereNull('read_at')->count(),
+            'pagination' => [
+                'current_page' => $notifications->currentPage(),
+                'last_page' => $notifications->lastPage(),
+                'per_page' => $notifications->perPage(),
+                'total' => $notifications->total(),
+                'has_more_pages' => $notifications->hasMorePages(),
+            ],
         ]);
     }
 

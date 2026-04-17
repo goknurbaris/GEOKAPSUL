@@ -24,6 +24,7 @@ test('authenticated user can list notifications', function () {
     $response->assertOk();
     expect($response->json('unread_count'))->toBe(1);
     expect($response->json('items.0.title'))->toBe('Test Bildirim');
+    expect($response->json('pagination.current_page'))->toBe(1);
 });
 
 test('notifications endpoint supports unread filter', function () {
@@ -47,6 +48,62 @@ test('notifications endpoint supports unread filter', function () {
 
     $response->assertOk();
     expect(collect($response->json('items'))->pluck('title')->all())->toBe(['Okunmamis']);
+});
+
+test('notifications endpoint supports read and type filters together', function () {
+    $user = User::factory()->create();
+
+    Notification::create([
+        'user_id' => $user->id,
+        'type' => 'capsule-created',
+        'title' => 'Okunmus olusturma',
+        'read_at' => now(),
+    ]);
+
+    Notification::create([
+        'user_id' => $user->id,
+        'type' => 'capsule-unlock-reminder',
+        'title' => 'Okunmus hatirlatma',
+        'read_at' => now(),
+    ]);
+
+    Notification::create([
+        'user_id' => $user->id,
+        'type' => 'capsule-created',
+        'title' => 'Okunmamis olusturma',
+        'read_at' => null,
+    ]);
+
+    $response = $this->actingAs($user)->getJson(route('api.notifications', [
+        'read' => 'read',
+        'type' => 'capsule-created',
+    ]));
+
+    $response->assertOk();
+    expect(collect($response->json('items'))->pluck('title')->all())->toBe(['Okunmus olusturma']);
+});
+
+test('notifications endpoint supports pagination metadata', function () {
+    $user = User::factory()->create();
+
+    foreach (range(1, 12) as $index) {
+        Notification::create([
+            'user_id' => $user->id,
+            'type' => 'capsule-created',
+            'title' => 'Bildirim ' . $index,
+        ]);
+    }
+
+    $response = $this->actingAs($user)->getJson(route('api.notifications', [
+        'per_page' => 5,
+        'page' => 2,
+    ]));
+
+    $response->assertOk();
+    expect(count($response->json('items')))->toBe(5);
+    expect($response->json('pagination.current_page'))->toBe(2);
+    expect($response->json('pagination.last_page'))->toBe(3);
+    expect($response->json('pagination.total'))->toBe(12);
 });
 
 test('authenticated user can mark notifications as read', function () {

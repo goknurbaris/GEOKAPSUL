@@ -4,12 +4,19 @@
     notifications: [],
     unreadCount: 0,
     loadingNotifications: false,
-    notificationFilter: 'all',
+    notificationReadFilter: 'all',
+    notificationTypeFilter: 'all',
+    notificationsPage: 1,
+    notificationsLastPage: 1,
+    notificationsTotal: 0,
     async loadNotifications() {
         this.loadingNotifications = true;
         try {
             const params = new URLSearchParams();
-            if (this.notificationFilter !== 'all') params.set('filter', this.notificationFilter);
+            params.set('page', String(this.notificationsPage));
+            params.set('per_page', '8');
+            if (this.notificationReadFilter !== 'all') params.set('read', this.notificationReadFilter);
+            if (this.notificationTypeFilter !== 'all') params.set('type', this.notificationTypeFilter);
             const response = await fetch('{{ route('api.notifications') }}?' + params.toString(), {
                 headers: { 'Accept': 'application/json' }
             });
@@ -17,9 +24,22 @@
             const data = await response.json();
             this.notifications = data.items || [];
             this.unreadCount = data.unread_count || 0;
+            this.notificationsLastPage = data.pagination?.last_page || 1;
+            this.notificationsTotal = data.pagination?.total || 0;
         } finally {
             this.loadingNotifications = false;
         }
+    },
+    async changeNotificationPage(page) {
+        if (page < 1 || page > this.notificationsLastPage || page === this.notificationsPage) return;
+        this.notificationsPage = page;
+        await this.loadNotifications();
+    },
+    async applyNotificationFilters(readFilter, typeFilter = this.notificationTypeFilter) {
+        this.notificationReadFilter = readFilter;
+        this.notificationTypeFilter = typeFilter;
+        this.notificationsPage = 1;
+        await this.loadNotifications();
     },
     async markAllNotificationsRead() {
         await fetch('{{ route('api.notifications.read-all') }}', {
@@ -70,9 +90,14 @@
                             <button @click="markAllNotificationsRead()" class="text-xs text-cyan-300 hover:text-cyan-200">Tümünü okundu yap</button>
                         </div>
                         <div class="px-4 py-2 border-b border-slate-700 flex items-center gap-2 text-xs">
-                            <button @click="notificationFilter = 'all'; loadNotifications()" :class="notificationFilter === 'all' ? 'bg-slate-600 text-white' : 'text-slate-300'" class="px-2 py-1 rounded-md">Tümü</button>
-                            <button @click="notificationFilter = 'unread'; loadNotifications()" :class="notificationFilter === 'unread' ? 'bg-slate-600 text-white' : 'text-slate-300'" class="px-2 py-1 rounded-md">Okunmamış</button>
-                            <button @click="notificationFilter = 'capsule-created'; loadNotifications()" :class="notificationFilter === 'capsule-created' ? 'bg-slate-600 text-white' : 'text-slate-300'" class="px-2 py-1 rounded-md">Oluşturma</button>
+                            <button @click="applyNotificationFilters('all', notificationTypeFilter)" :class="notificationReadFilter === 'all' ? 'bg-slate-600 text-white' : 'text-slate-300'" class="px-2 py-1 rounded-md">Tümü</button>
+                            <button @click="applyNotificationFilters('unread', notificationTypeFilter)" :class="notificationReadFilter === 'unread' ? 'bg-slate-600 text-white' : 'text-slate-300'" class="px-2 py-1 rounded-md">Okunmamış</button>
+                            <button @click="applyNotificationFilters('read', notificationTypeFilter)" :class="notificationReadFilter === 'read' ? 'bg-slate-600 text-white' : 'text-slate-300'" class="px-2 py-1 rounded-md">Okunmuş</button>
+                        </div>
+                        <div class="px-4 py-2 border-b border-slate-700 flex items-center gap-2 text-xs">
+                            <button @click="applyNotificationFilters(notificationReadFilter, 'all')" :class="notificationTypeFilter === 'all' ? 'bg-slate-600 text-white' : 'text-slate-300'" class="px-2 py-1 rounded-md">Tüm tipler</button>
+                            <button @click="applyNotificationFilters(notificationReadFilter, 'capsule-created')" :class="notificationTypeFilter === 'capsule-created' ? 'bg-slate-600 text-white' : 'text-slate-300'" class="px-2 py-1 rounded-md">Oluşturma</button>
+                            <button @click="applyNotificationFilters(notificationReadFilter, 'capsule-unlock-reminder')" :class="notificationTypeFilter === 'capsule-unlock-reminder' ? 'bg-slate-600 text-white' : 'text-slate-300'" class="px-2 py-1 rounded-md">Hatırlatma</button>
                         </div>
                         <div class="max-h-80 overflow-auto">
                             <template x-if="loadingNotifications">
@@ -91,6 +116,14 @@
                                     <p class="text-[10px] text-slate-500 mt-1" x-text="new Date(item.created_at).toLocaleString('tr-TR')"></p>
                                 </a>
                             </template>
+                        </div>
+                        <div class="px-4 py-2 border-t border-slate-700 flex items-center justify-between text-xs text-slate-400">
+                            <span x-text="`Toplam: ${notificationsTotal}`"></span>
+                            <div class="flex items-center gap-2">
+                                <button @click="changeNotificationPage(notificationsPage - 1)" :disabled="notificationsPage <= 1" class="px-2 py-1 rounded border border-slate-600 disabled:opacity-40">Önceki</button>
+                                <span x-text="`${notificationsPage} / ${notificationsLastPage}`"></span>
+                                <button @click="changeNotificationPage(notificationsPage + 1)" :disabled="notificationsPage >= notificationsLastPage" class="px-2 py-1 rounded border border-slate-600 disabled:opacity-40">Sonraki</button>
+                            </div>
                         </div>
                     </div>
                 </div>
