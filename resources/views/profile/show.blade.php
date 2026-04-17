@@ -68,6 +68,76 @@
                     {{ __('Bu seviyedeki unvanınız:') }} <span class="text-indigo-300 font-medium">{{ $user->level_title }}</span>
                 </p>
             </section>
+
+            <section class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <article class="xl:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-slate-100">{{ __('Son Kazanılan Rozetler') }}</h3>
+                        <span class="text-xs text-slate-400">{{ __('Toplam') }}: {{ $user->badges_count }}</span>
+                    </div>
+
+                    @if($recentBadges->isEmpty())
+                        <p class="text-sm text-slate-400">{{ __('Henüz rozet kazanmadın. Kapsül oluşturarak ilk rozetine ulaşabilirsin.') }}</p>
+                    @else
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            @foreach($recentBadges as $badge)
+                                @php($classes = $badge->color_classes)
+                                <div class="rounded-xl border border-slate-600/70 bg-slate-900/60 p-4">
+                                    <div class="w-10 h-10 rounded-full {{ $classes[0] }} flex items-center justify-center text-lg shadow {{ $classes[2] }}">
+                                        {{ $badge->icon }}
+                                    </div>
+                                    <p class="mt-3 text-sm font-semibold text-slate-100">{{ $badge->name }}</p>
+                                    <p class="text-xs text-slate-400 mt-1">{{ $badge->description }}</p>
+                                    <p class="text-[11px] text-slate-500 mt-2">
+                                        {{ __('Kazanıldı:') }} {{ optional($badge->pivot->earned_at)->format('d.m.Y') ?? '—' }}
+                                    </p>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </article>
+
+                <article class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow">
+                    <h3 class="text-lg font-semibold text-slate-100 mb-4">{{ __('Kategori Dağılımı') }}</h3>
+                    @if(empty($capsulesByCategory))
+                        <p class="text-sm text-slate-400">{{ __('Henüz kapsül oluşturmamışsın.') }}</p>
+                    @else
+                        <div class="space-y-3">
+                            @foreach($capsulesByCategory as $category => $count)
+                                <div class="flex items-center justify-between text-sm">
+                                    <span class="text-slate-300">{{ \App\Models\Capsule::CATEGORIES[$category]['name'] ?? ucfirst($category) }}</span>
+                                    <span class="text-cyan-300 font-semibold">{{ $count }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </article>
+            </section>
+
+            <section class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow">
+                <h3 class="text-lg font-semibold text-slate-100 mb-3">{{ __('Sıradaki Hedef Rozet') }}</h3>
+                @if($nextBadgeProgress)
+                    <div class="flex items-start gap-4">
+                        @php($nextClasses = $nextBadgeProgress['badge']->color_classes)
+                        <div class="w-12 h-12 rounded-full {{ $nextClasses[0] }} flex items-center justify-center text-xl shadow {{ $nextClasses[2] }}">
+                            {{ $nextBadgeProgress['badge']->icon }}
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-slate-100 font-semibold">{{ $nextBadgeProgress['badge']->name }}</p>
+                            <p class="text-sm text-slate-400 mt-1">{{ $nextBadgeProgress['badge']->description }}</p>
+                            <div class="mt-3 w-full bg-slate-700 rounded-full h-2.5 overflow-hidden">
+                                <div class="h-2.5 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full" style="width: {{ $nextBadgeProgress['progress'] }}%"></div>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-2">
+                                {{ __('İlerleme:') }} {{ $nextBadgeProgress['current'] }} / {{ $nextBadgeProgress['target'] }}
+                                · {{ __('Kalan:') }} {{ $nextBadgeProgress['remaining'] }}
+                            </p>
+                        </div>
+                    </div>
+                @else
+                    <p class="text-sm text-slate-400">{{ __('Tebrikler! Tanımlı tüm rozetleri kazandın.') }}</p>
+                @endif
+            </section>
         </div>
     </div>
 </x-app-layout>

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Badge;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -22,6 +23,46 @@ test('profile show page is displayed', function () {
         ->get('/profile/show');
 
     $response->assertOk();
+});
+
+test('profile show page includes recent badges and next badge progress', function () {
+    $user = User::factory()->create([
+        'capsules_created' => 3,
+        'capsules_opened' => 2,
+        'total_distance_km' => 1.5,
+        'level' => 2,
+    ]);
+
+    $earnedBadge = Badge::create([
+        'slug' => 'earned-badge',
+        'name' => 'Kazanilan Rozet',
+        'description' => 'Test rozeti',
+        'icon' => '🏅',
+        'color' => 'indigo',
+        'xp_reward' => 25,
+        'criteria' => ['type' => 'capsule_count', 'value' => 1],
+    ]);
+
+    Badge::create([
+        'slug' => 'next-badge',
+        'name' => 'Siradaki Rozet',
+        'description' => 'Ilerleme rozeti',
+        'icon' => '🎯',
+        'color' => 'emerald',
+        'xp_reward' => 50,
+        'criteria' => ['type' => 'capsule_count', 'value' => 5],
+    ]);
+
+    $user->badges()->attach($earnedBadge->id, ['earned_at' => now()->subDay()]);
+
+    $response = $this
+        ->actingAs($user)
+        ->get('/profile/show');
+
+    $response->assertOk();
+    $response->assertSee('Kazanilan Rozet');
+    $response->assertSee('Siradaki Rozet');
+    $response->assertSee('3 / 5');
 });
 
 test('profile information can be updated', function () {

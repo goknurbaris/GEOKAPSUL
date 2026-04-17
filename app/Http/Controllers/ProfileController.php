@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\Badge;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,9 +22,23 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         $user->loadCount(['badges', 'capsules']);
+        $recentBadges = $user->badges()
+            ->withPivot('earned_at')
+            ->orderByDesc('user_badges.earned_at')
+            ->limit(6)
+            ->get();
+        $capsulesByCategory = $user->capsules()
+            ->selectRaw('category, COUNT(*) as total')
+            ->groupBy('category')
+            ->pluck('total', 'category')
+            ->toArray();
+        $nextBadgeProgress = $this->resolveNextBadgeProgress($user, $capsulesByCategory);
 
         return view('profile.show', [
             'user' => $user,
+            'recentBadges' => $recentBadges,
+            'capsulesByCategory' => $capsulesByCategory,
+            'nextBadgeProgress' => $nextBadgeProgress,
         ]);
     }
 
@@ -96,5 +111,58 @@ class ProfileController extends Controller
         $request->session()->regenerateToken();
 
         return Redirect::to('/');
+    }
+
+    private function resolveNextBadgeProgress($user, array $capsulesByCategory): ?array
+    {
+        $earnedBadgeIds = $user->badges()->pluck('badges.id');
+        $candidateBadges = Badge::query()
+            ->whereNotIn('id', $earnedBadgeIds)
+            ->get();
+
+        $bestMatch = null;
+
+        foreach ($candidateBadges as $badge) {
+            $criteria = $badge->criteria ?? [];
+            $target = (int) ($criteria['value'] ?? 0);
+            if ($target <= 0) {
+                continue;
+            }
+
+            $current = match ($criteria['type'] ?? null) {
+                'capsule_count' => (int) $user->capsules_created,
+                'capsule_opened' => (int) $user->capsules_opened,
+                'distance' => (float) $user->total_distance_km,
+                'level' => (int) $user->level,
+                'category' => (int) ($capsulesByCategory[$criteria['category'] ?? ''] ?? 0),
+                default => null,
+            };
+
+            if ($current === null) {
+                continue;
+            }
+
+            $remaining = max(0, $target - $current);
+            $progress = min(100, (int) floor(($current / $target) * 100));
+            $candidate = [
+                'badge' => $badge,
+                'current' => $current,
+                'target' => $target,
+                'remaining' => $remaining,
+                'progress' => $progress,
+            ];
+
+            if ($bestMatch === null) {
+                $bestMatch = $candidate;
+                continue;
+            }
+
+            if ($candidate['progress'] > $bestMatch['progress']
+                || ($candidate['progress'] === $bestMatch['progress'] && $candidate['remaining'] < $bestMatch['remaining'])) {
+                $bestMatch = $candidate;
+            }
+        }
+
+        return $bestMatch;
     }
 }
