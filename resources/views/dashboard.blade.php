@@ -298,6 +298,8 @@
                         shareUrl: @js($capsule->share_url),
                         showShareModal: false,
                         copyLabel: '📋 Kopyala',
+                        shareStatus: '',
+                        shareStatusType: 'info',
                         async createShareLink() {
                             if (this.shareUrl) {
                                 this.showShareModal = true;
@@ -324,10 +326,17 @@
                                 this.shareUrl = data.share_url;
                                 this.showShareModal = true;
                             } catch (e) {
-                                alert('Paylaşım linki oluşturulamadı');
+                                this.setShareStatus('Paylaşım linki oluşturulamadı.', 'error');
                             } finally {
                                 this.isLoading = false;
                             }
+                        },
+                        setShareStatus(message, type = 'info') {
+                            this.shareStatus = message;
+                            this.shareStatusType = type;
+                            setTimeout(() => {
+                                this.shareStatus = '';
+                            }, 2200);
                         },
                         async copyToClipboard() {
                             try {
@@ -345,13 +354,38 @@
                                     document.body.removeChild(helper);
                                 }
                                 this.copyLabel = '✅ Kopyalandi!';
+                                this.setShareStatus('Link kopyalandı.', 'success');
                             } catch (e) {
                                 this.copyLabel = '❌ Kopyalanamadi';
+                                this.setShareStatus('Kopyalama başarısız oldu.', 'error');
                             }
 
                             setTimeout(() => {
                                 this.copyLabel = '📋 Kopyala';
                             }, 1800);
+                        },
+                        openShareLink() {
+                            if (!this.shareUrl) return;
+                            window.open(this.shareUrl, '_blank', 'noopener');
+                        },
+                        async nativeShare() {
+                            if (!this.shareUrl) return;
+                            if (!navigator.share) {
+                                this.setShareStatus('Bu tarayıcı yerleşik paylaşımı desteklemiyor.', 'error');
+                                return;
+                            }
+                            try {
+                                await navigator.share({
+                                    title: 'GeoKapsül Paylaşımı',
+                                    text: 'Kapsülümü seninle paylaşıyorum.',
+                                    url: this.shareUrl
+                                });
+                                this.setShareStatus('Paylaşım penceresi açıldı.', 'success');
+                            } catch (e) {
+                                if (e && e.name !== 'AbortError') {
+                                    this.setShareStatus('Paylaşım sırasında bir hata oluştu.', 'error');
+                                }
+                            }
                         }
                     }" class="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/5 rounded-3xl shadow-xl card-hover overflow-hidden flex flex-col group relative">
 
@@ -371,15 +405,27 @@
                                     </h3>
                                     <button @click="showShareModal = false" aria-label="Paylasim penceresini kapat" class="text-slate-400 hover:text-white">✕</button>
                                 </div>
-                                <p class="text-slate-400 text-sm mb-4">Bu linki paylaşarak kapsülünü başkalarıyla paylaşabilirsin.</p>
-                                <div class="flex gap-2">
-                                    <input type="text" :value="shareUrl" readonly aria-label="Paylasim linki" class="flex-1 bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono">
-                                    <button @click="copyToClipboard()" x-ref="copyBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-3 rounded-xl text-sm font-bold transition-colors whitespace-nowrap">
-                                        <span x-text="copyLabel"></span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                                 <p class="text-slate-400 text-sm mb-4">Bu linki paylaşarak kapsülünü başkalarıyla paylaşabilirsin.</p>
+                                 <div class="flex gap-2">
+                                     <input type="text" :value="shareUrl" readonly aria-label="Paylasim linki" class="flex-1 bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono">
+                                     <button @click="copyToClipboard()" x-ref="copyBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-3 rounded-xl text-sm font-bold transition-colors whitespace-nowrap">
+                                         <span x-text="copyLabel"></span>
+                                     </button>
+                                 </div>
+                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+                                     <button @click="openShareLink()" class="bg-slate-700 hover:bg-slate-600 text-slate-100 px-3 py-2 rounded-xl text-xs font-semibold transition-colors">
+                                         🔍 Linki Aç
+                                     </button>
+                                     <button @click="nativeShare()" class="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-2 rounded-xl text-xs font-semibold transition-colors">
+                                         📲 Cihazda Paylaş
+                                     </button>
+                                 </div>
+                                 <p x-show="shareStatus" x-cloak
+                                    class="mt-3 text-xs font-semibold"
+                                    :class="shareStatusType === 'success' ? 'text-emerald-300' : 'text-rose-300'"
+                                    x-text="shareStatus"></p>
+                             </div>
+                         </div>
 
                         {{-- View Mode --}}
                         <div x-show="!isEditing" class="flex flex-col h-full">

@@ -267,6 +267,20 @@ describe('Capsule Sharing', function () {
         expect($capsule->share_code)->not->toBeNull();
     });
 
+    test('existing share link is reused when creating share link again', function () {
+        $user = User::factory()->create();
+        $capsule = Capsule::factory()->create([
+            'user_id' => $user->id,
+            'share_code' => 'EXISTING12345',
+        ]);
+
+        $response = $this->actingAs($user)->postJson(route('capsule.share', $capsule));
+
+        $response->assertOk();
+        expect($response->json('share_code'))->toBe('EXISTING12345');
+        expect($response->json('share_url'))->toContain('EXISTING12345');
+    });
+
     test('user cannot create share link for others capsule', function () {
         $user1 = User::factory()->create();
         $user2 = User::factory()->create();
