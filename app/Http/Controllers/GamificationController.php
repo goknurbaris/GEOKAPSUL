@@ -32,6 +32,7 @@ class GamificationController extends Controller
 
         $user = auth()->user();
         $userRanks = [];
+        $followingIds = [];
 
         if ($user) {
             $userRanks = [
@@ -40,6 +41,7 @@ class GamificationController extends Controller
                 'explorer' => User::where('capsules_opened', '>', $user->capsules_opened)->count() + 1,
                 'distance' => User::where('total_distance_km', '>', $user->total_distance_km)->count() + 1,
             ];
+            $followingIds = $user->following()->pluck('users.id')->all();
         }
 
         return view('gamification.leaderboard', [
@@ -47,6 +49,7 @@ class GamificationController extends Controller
             'currentType' => $type,
             'userRanks' => $userRanks,
             'user' => $user,
+            'followingIds' => $followingIds,
         ]);
     }
 

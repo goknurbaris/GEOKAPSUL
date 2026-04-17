@@ -97,6 +97,16 @@
                         </div>
                     </div>
                 </div>
+                <div class="grid grid-cols-2 gap-3 sm:w-40">
+                    <div class="bg-white/5 rounded-xl px-4 py-2 text-center">
+                        <div class="text-lg font-bold text-cyan-300">{{ $user->following()->count() }}</div>
+                        <div class="text-xs text-slate-500">Takip</div>
+                    </div>
+                    <div class="bg-white/5 rounded-xl px-4 py-2 text-center">
+                        <div class="text-lg font-bold text-violet-300">{{ $user->followers()->count() }}</div>
+                        <div class="text-xs text-slate-500">Takipçi</div>
+                    </div>
+                </div>
             </div>
             @endauth
 
@@ -125,6 +135,28 @@
                                 <div class="font-semibold text-white">{{ $player->name }}</div>
                                 <div class="text-xs text-slate-400">Seviye {{ $player->level }}</div>
                             </div>
+                            @auth
+                                @if($user->id !== $player->id)
+                                    <div class="mr-2">
+                                        @if(in_array($player->id, $followingIds ?? [], true))
+                                            <form method="POST" action="{{ route('follow.destroy', $player) }}">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-700 text-slate-200 hover:bg-slate-600 transition">
+                                                    Takiptesin
+                                                </button>
+                                            </form>
+                                        @else
+                                            <form method="POST" action="{{ route('follow.store', $player) }}">
+                                                @csrf
+                                                <button type="submit" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-600 text-white hover:bg-indigo-500 transition">
+                                                    Takip Et
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                @endif
+                            @endauth
                             <div class="text-right">
                                 <div class="font-bold text-amber-400">{{ number_format($player->xp) }}</div>
                                 <div class="text-xs text-slate-500">XP</div>

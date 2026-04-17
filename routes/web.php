@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CapsuleController;
 use App\Http\Controllers\GamificationController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\FollowController;
 use App\Models\Capsule;
 use Illuminate\Support\Facades\Route;
 
@@ -78,6 +79,10 @@ Route::middleware('auth')->group(function () {
     // Notifications API
     Route::get('/api/notifications', [NotificationController::class, 'index'])->name('api.notifications');
     Route::post('/api/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('api.notifications.read-all');
+
+    // Takip sistemi
+    Route::post('/kullanici/{user}/takip-et', [FollowController::class, 'store'])->name('follow.store');
+    Route::delete('/kullanici/{user}/takip-et', [FollowController::class, 'destroy'])->name('follow.destroy');
 
 });
 
